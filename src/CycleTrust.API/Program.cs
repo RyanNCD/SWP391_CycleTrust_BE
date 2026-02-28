@@ -27,6 +27,7 @@ builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IListingService, ListingService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
+builder.Services.AddScoped<ICatalogService, CatalogService>();
 
 // AutoMapper
 builder.Services.AddAutoMapper(typeof(MappingProfile));
