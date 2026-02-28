@@ -50,7 +50,7 @@ VALUES (3, 'Giant TCR Advanced Pro 2022', 'Xe đua đường trường cao cấp
 
 -- Sample Media for listing
 INSERT INTO listing_media (listing_id, type, url, sort_order) VALUES
-(1, 'IMAGE', 'https://images.giant-bicycles.com/tcr-advanced-pro-1.jpg', 0),
-(1, 'IMAGE', 'https://images.giant-bicycles.com/tcr-advanced-pro-2.jpg', 1);
+(1, 'IMAGE', 'https://cdn.chotot.com/CnEPEcghf5_v75qBUq0ZM9nDuKsYjshvAD1G5BY2jYQ/preset:listing/plain/35129bdf71d678b64f45d45209662f82-2972970484124723730.jpg', 0),
+(1, 'IMAGE', 'https://danhgiathuonghieu.vn/wp-content/uploads/2025/05/xe-dap-the-thao-bien-hoa-5.jpg', 1);
 
 COMMIT;
