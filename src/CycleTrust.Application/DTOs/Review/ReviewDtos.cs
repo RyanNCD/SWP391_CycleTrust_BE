@@ -17,3 +17,10 @@ public class CreateReviewRequest
     public int Rating { get; set; }
     public string? Comment { get; set; }
 }
+
+public class SellerRatingDto
+{
+    public long SellerId { get; set; }
+    public double AverageRating { get; set; }
+    public int TotalReviews { get; set; }
+}
