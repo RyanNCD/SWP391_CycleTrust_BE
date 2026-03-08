@@ -11,6 +11,7 @@ public class User : BaseEntity
     public string FullName { get; set; } = string.Empty;
     public string? AvatarUrl { get; set; }
     public bool IsActive { get; set; } = true;
+    public ApprovalStatus? ApprovalStatus { get; set; } // For seller approval
     public decimal RatingAvg { get; set; } = 0.00m;
     public int RatingCount { get; set; } = 0;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;

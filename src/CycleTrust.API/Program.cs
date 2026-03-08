@@ -28,6 +28,13 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IListingService, ListingService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<ICatalogService, CatalogService>();
+builder.Services.AddScoped<IReviewService, ReviewService>();
+builder.Services.AddScoped<IWishlistService, WishlistService>();
+builder.Services.AddScoped<IDisputeService, DisputeService>();
+builder.Services.AddScoped<IDepositPolicyService, DepositPolicyService>();
+builder.Services.AddScoped<IUserManagementService, UserManagementService>();
+builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
+builder.Services.AddScoped<IVNPayService, VNPayService>();
 
 // AutoMapper
 builder.Services.AddAutoMapper(typeof(MappingProfile));

@@ -42,18 +42,27 @@ public class AuthService : IAuthService
                 throw new Exception("Phone đã tồn tại");
         }
 
+        var role = Enum.Parse<UserRole>(request.Role, true);
+
         var user = new User
         {
             Email = request.Email,
             Phone = request.Phone,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
             FullName = request.FullName,
-            Role = Enum.Parse<UserRole>(request.Role, true),
-            IsActive = true
+            Role = role,
+            IsActive = true,
+            ApprovalStatus = role == UserRole.SELLER ? ApprovalStatus.PENDING : null
         };
 
         _context.Users.Add(user);
         await _context.SaveChangesAsync();
+
+        // If seller, require admin approval before login
+        if (role == UserRole.SELLER)
+        {
+            throw new Exception("Đăng ký thành công! Tài khoản của bạn đang chờ admin phê duyệt.");
+        }
 
         var token = GenerateJwtToken(user);
         return new AuthResponse
@@ -75,6 +84,19 @@ public class AuthService : IAuthService
 
         if (!user.IsActive)
             throw new Exception("Tài khoản đã bị khóa");
+
+        // Check seller approval status
+        if (user.Role == UserRole.SELLER)
+        {
+            if (user.ApprovalStatus == ApprovalStatus.PENDING)
+                throw new Exception("Tài khoản của bạn đang chờ admin phê duyệt");
+            
+            if (user.ApprovalStatus == ApprovalStatus.REJECTED)
+                throw new Exception("Tài khoản của bạn đã bị từ chối");
+            
+            if (user.ApprovalStatus != ApprovalStatus.APPROVED)
+                throw new Exception("Tài khoản chưa được phê duyệt");
+        }
 
         var token = GenerateJwtToken(user);
         return new AuthResponse

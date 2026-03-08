@@ -36,8 +36,7 @@ public class MappingProfile : Profile
         CreateMap<ListingMedia, ListingMediaDto>()
             .ForMember(d => d.Type, opt => opt.MapFrom(s => s.Type.ToString()));
 
-        CreateMap<Inspection, InspectionDto>()
-            .ForMember(d => d.InspectorName, opt => opt.MapFrom(s => s.Inspector.FullName));
+        CreateMap<Inspection, InspectionDto>();
 
         CreateMap<CreateListingRequest, Listing>()
             .ForMember(d => d.Status, opt => opt.MapFrom(s => ListingStatus.DRAFT));
@@ -61,5 +60,9 @@ public class MappingProfile : Profile
             .ForMember(d => d.SellerName, opt => opt.MapFrom(s => s.Seller.FullName));
 
         CreateMap<CreateReviewRequest, Review>();
+
+        // DepositPolicy
+        CreateMap<DepositPolicy, CycleTrust.Application.DTOs.DepositPolicy.DepositPolicyDto>()
+            .ForMember(d => d.Mode, opt => opt.MapFrom(s => s.Mode.ToString()));
     }
 }

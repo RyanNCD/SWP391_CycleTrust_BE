@@ -41,6 +41,7 @@ public class CycleTrustDbContext : DbContext
             entity.Property(e => e.FullName).HasColumnName("full_name").HasMaxLength(255).IsRequired();
             entity.Property(e => e.AvatarUrl).HasColumnName("avatar_url");
             entity.Property(e => e.IsActive).HasColumnName("is_active");
+            entity.Property(e => e.ApprovalStatus).HasColumnName("approval_status").HasConversion<int?>();
             entity.Property(e => e.RatingAvg).HasColumnName("rating_avg").HasPrecision(3, 2);
             entity.Property(e => e.RatingCount).HasColumnName("rating_count");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");

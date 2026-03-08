@@ -12,6 +12,7 @@ public interface IOrderService
     Task<OrderDto> CreateOrderAsync(long buyerId, CreateOrderRequest request);
     Task<OrderDto> GetOrderByIdAsync(long id);
     Task<List<OrderDto>> GetMyOrdersAsync(long userId, string role);
+    Task<List<OrderDto>> GetAllOrdersForAdminAsync(string? status, DateTime? fromDate, DateTime? toDate);
     Task<PaymentDto> CreatePaymentAsync(long userId, PaymentRequest request);
     Task<PaymentDto> ProcessPaymentCallbackAsync(PaymentCallbackRequest request);
     Task<OrderDto> UpdateOrderStatusAsync(long id, long userId, UpdateOrderStatusRequest request);
@@ -130,6 +131,36 @@ public class OrderService : IOrderService
             query = query.Where(o => o.BuyerId == userId);
         else if (role == "SELLER")
             query = query.Where(o => o.SellerId == userId);
+
+        var orders = await query.OrderByDescending(o => o.CreatedAt).ToListAsync();
+        return _mapper.Map<List<OrderDto>>(orders);
+    }
+
+    public async Task<List<OrderDto>> GetAllOrdersForAdminAsync(string? status, DateTime? fromDate, DateTime? toDate)
+    {
+        var query = _context.Orders
+            .Include(o => o.Listing)
+            .Include(o => o.Buyer)
+            .Include(o => o.Seller)
+            .Include(o => o.Payments)
+            .AsQueryable();
+
+        // Filter by status
+        if (!string.IsNullOrEmpty(status) && Enum.TryParse<OrderStatus>(status, true, out var orderStatus))
+        {
+            query = query.Where(o => o.Status == orderStatus);
+        }
+
+        // Filter by date range
+        if (fromDate.HasValue)
+        {
+            query = query.Where(o => o.CreatedAt >= fromDate.Value);
+        }
+
+        if (toDate.HasValue)
+        {
+            query = query.Where(o => o.CreatedAt <= toDate.Value);
+        }
 
         var orders = await query.OrderByDescending(o => o.CreatedAt).ToListAsync();
         return _mapper.Map<List<OrderDto>>(orders);
