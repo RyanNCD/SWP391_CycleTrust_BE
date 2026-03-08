@@ -1,3 +1,5 @@
+using CycleTrust.Domain.Enums;
+
 namespace CycleTrust.Application.DTOs;
 
 // Request to create VNPay payment URL
@@ -7,6 +9,7 @@ public class VNPayPaymentRequestDto
     public long Amount { get; set; }
     public string OrderInfo { get; set; } = string.Empty;
     public string? ReturnUrl { get; set; }
+    public PaymentType PaymentType { get; set; }
 }
 
 // Response containing VNPay payment URL

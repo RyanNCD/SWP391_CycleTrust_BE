@@ -221,6 +221,7 @@ public class OrderService : IOrderService
     {
         var payment = await _context.Payments
             .Include(p => p.Order)
+            .ThenInclude(o => o.Listing)
             .FirstOrDefaultAsync(p => p.Id == request.PaymentId);
 
         if (payment == null)
@@ -242,7 +243,17 @@ public class OrderService : IOrderService
             }
             else if (payment.Type == PaymentType.FULL)
             {
-                payment.Order.Status = OrderStatus.CONFIRMED;
+                // If this is remaining payment after delivery, complete the order
+                if (payment.Order.Status == OrderStatus.DELIVERED && payment.Order.DepositPaidAt.HasValue)
+                {
+                    payment.Order.Status = OrderStatus.COMPLETED;
+                    payment.Order.CompletedAt = DateTime.UtcNow;
+                    payment.Order.Listing.Status = ListingStatus.SOLD;
+                }
+                else
+                {
+                    payment.Order.Status = OrderStatus.CONFIRMED;
+                }
             }
 
             payment.Order.UpdatedAt = DateTime.UtcNow;

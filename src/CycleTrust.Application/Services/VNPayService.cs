@@ -83,7 +83,7 @@ public class VNPayService : IVNPayService
             var payment = new Payment
             {
                 OrderId = order.Id,
-                Type = PaymentType.DEPOSIT,
+                Type = request.PaymentType,
                 Status = PaymentStatus.PENDING,
                 Amount = request.Amount,
                 Currency = "VND",

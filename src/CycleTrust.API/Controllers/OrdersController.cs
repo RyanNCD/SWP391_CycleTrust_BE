@@ -128,7 +128,8 @@ public class OrdersController : ControllerBase
                 OrderId = id,
                 Amount = order.DepositAmount,
                 OrderInfo = $"Thanh toán cọc đơn hàng #{id}",
-                ReturnUrl = null // Use default from config
+                ReturnUrl = null, // Use default from config
+                PaymentType = PaymentType.DEPOSIT
             };
             
             var vnpayResult = await _vnPayService.CreatePaymentUrl(vnpayRequest, ipAddress);
@@ -178,7 +179,8 @@ public class OrdersController : ControllerBase
                 OrderId = id,
                 Amount = amount,
                 OrderInfo = orderInfo,
-                ReturnUrl = null // Use default from config
+                ReturnUrl = null, // Use default from config
+                PaymentType = PaymentType.FULL
             };
             
             var vnpayResult = await _vnPayService.CreatePaymentUrl(vnpayRequest, ipAddress);
