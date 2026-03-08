@@ -1,3 +1,6 @@
+using CycleTrust.Application.DTOs.User;
+using CycleTrust.Application.DTOs.Catalog;
+
 namespace CycleTrust.Application.DTOs.Listing;
 
 public class ListingDto
@@ -22,6 +25,10 @@ public class ListingDto
     public string Status { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
+    public UserDto? Seller { get; set; }
+    public BrandDto? Brand { get; set; }
+    public CategoryDto? Category { get; set; }
+    public SizeOptionDto? SizeOption { get; set; }
     public List<ListingMediaDto> Media { get; set; } = new();
     public InspectionDto? Inspection { get; set; }
 }
@@ -38,11 +45,11 @@ public class InspectionDto
 {
     public long Id { get; set; }
     public long InspectorId { get; set; }
-    public string InspectorName { get; set; } = string.Empty;
     public string Summary { get; set; } = string.Empty;
     public string? ChecklistJson { get; set; }
     public string? ReportUrl { get; set; }
     public DateTime CreatedAt { get; set; }
+    public UserDto? Inspector { get; set; }
 }
 
 public class CreateListingRequest
@@ -58,6 +65,7 @@ public class CreateListingRequest
     public string? ConditionNote { get; set; }
     public int? YearModel { get; set; }
     public List<CreateListingMediaRequest> Media { get; set; } = new();
+    public string? Status { get; set; } // "DRAFT" or "PENDING_APPROVAL"
 }
 
 public class CreateListingMediaRequest
@@ -79,6 +87,8 @@ public class UpdateListingRequest
     public long? PriceAmount { get; set; }
     public string? ConditionNote { get; set; }
     public int? YearModel { get; set; }
+    public List<CreateListingMediaRequest>? Media { get; set; }
+    public string? Status { get; set; } // "DRAFT" or "PENDING_APPROVAL"
 }
 
 public class ApproveListingRequest

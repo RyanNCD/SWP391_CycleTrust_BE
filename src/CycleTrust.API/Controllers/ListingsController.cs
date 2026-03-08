@@ -50,6 +50,22 @@ public class ListingsController : ControllerBase
     }
 
     [Authorize(Roles = "SELLER")]
+    [HttpGet("my")]
+    public async Task<ActionResult<ApiResponse<List<ListingDto>>>> GetMyListings()
+    {
+        try
+        {
+            var userId = GetUserId();
+            var result = await _listingService.GetMyListingsAsync(userId);
+            return Ok(ApiResponse<List<ListingDto>>.SuccessResponse(result));
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ApiResponse<List<ListingDto>>.ErrorResponse(ex.Message));
+        }
+    }
+
+    [Authorize(Roles = "SELLER")]
     [HttpPost]
     public async Task<ActionResult<ApiResponse<ListingDto>>> CreateListing([FromBody] CreateListingRequest request)
     {

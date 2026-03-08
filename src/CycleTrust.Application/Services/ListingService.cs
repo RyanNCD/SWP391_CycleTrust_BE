@@ -12,6 +12,7 @@ public interface IListingService
     Task<ListingDto> CreateListingAsync(long sellerId, CreateListingRequest request);
     Task<ListingDto> GetListingByIdAsync(long id);
     Task<List<ListingDto>> GetListingsAsync(string? status = null, long? categoryId = null);
+    Task<List<ListingDto>> GetMyListingsAsync(long sellerId);
     Task<ListingDto> UpdateListingAsync(long id, long sellerId, UpdateListingRequest request);
     Task<ListingDto> SubmitForApprovalAsync(long id, long sellerId);
     Task<ListingDto> ApproveListingAsync(long id, long adminId, ApproveListingRequest request);
@@ -33,7 +34,16 @@ public class ListingService : IListingService
     {
         var listing = _mapper.Map<Listing>(request);
         listing.SellerId = sellerId;
-        listing.Status = ListingStatus.DRAFT;
+        
+        // Set status based on request, default to DRAFT if not specified
+        if (!string.IsNullOrEmpty(request.Status) && Enum.TryParse<ListingStatus>(request.Status, true, out var status))
+        {
+            listing.Status = status;
+        }
+        else
+        {
+            listing.Status = ListingStatus.DRAFT;
+        }
 
         _context.Listings.Add(listing);
         await _context.SaveChangesAsync();
@@ -81,9 +91,26 @@ public class ListingService : IListingService
         return _mapper.Map<List<ListingDto>>(listings);
     }
 
+    public async Task<List<ListingDto>> GetMyListingsAsync(long sellerId)
+    {
+        var query = _context.Listings
+            .Include(l => l.Seller)
+            .Include(l => l.Brand)
+            .Include(l => l.Category)
+            .Include(l => l.SizeOption)
+            .Include(l => l.Media)
+            .Where(l => l.SellerId == sellerId && !l.IsDeleted);
+
+        var listings = await query.OrderByDescending(l => l.CreatedAt).ToListAsync();
+        return _mapper.Map<List<ListingDto>>(listings);
+    }
+
     public async Task<ListingDto> UpdateListingAsync(long id, long sellerId, UpdateListingRequest request)
     {
-        var listing = await _context.Listings.FirstOrDefaultAsync(l => l.Id == id && l.SellerId == sellerId && !l.IsDeleted);
+        var listing = await _context.Listings
+            .Include(l => l.Media)
+            .FirstOrDefaultAsync(l => l.Id == id && l.SellerId == sellerId && !l.IsDeleted);
+            
         if (listing == null)
             throw new Exception("Không tìm thấy listing hoặc không có quyền chỉnh sửa");
 
@@ -100,6 +127,31 @@ public class ListingService : IListingService
         if (request.PriceAmount.HasValue) listing.PriceAmount = request.PriceAmount.Value;
         if (request.ConditionNote != null) listing.ConditionNote = request.ConditionNote;
         if (request.YearModel.HasValue) listing.YearModel = request.YearModel;
+        
+        // Handle media update
+        if (request.Media != null)
+        {
+            // Remove existing media
+            var existingMedia = listing.Media.ToList();
+            _context.ListingMedia.RemoveRange(existingMedia);
+            
+            // Add new media
+            listing.Media = _mapper.Map<List<ListingMedia>>(request.Media);
+        }
+        
+        // Handle status change: DRAFT -> PENDING_APPROVAL
+        if (!string.IsNullOrEmpty(request.Status) && Enum.TryParse<ListingStatus>(request.Status, true, out var newStatus))
+        {
+            if (listing.Status == ListingStatus.DRAFT && newStatus == ListingStatus.PENDING_APPROVAL)
+            {
+                listing.Status = newStatus;
+            }
+            else if (listing.Status == ListingStatus.DRAFT && newStatus == ListingStatus.DRAFT)
+            {
+                // Keep as draft
+                listing.Status = ListingStatus.DRAFT;
+            }
+        }
 
         listing.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
