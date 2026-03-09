@@ -2,6 +2,13 @@
 -- MySQL 8+ Schema - MVP Used Sports Bike Marketplace
 -- =====================================================
 
+-- Create database if not exists
+CREATE DATABASE IF NOT EXISTS cycle_trust_db 
+CHARACTER SET utf8mb4 
+COLLATE utf8mb4_unicode_ci;
+
+USE cycle_trust_db;
+
 SET NAMES utf8mb4;
 SET time_zone = '+00:00';
 
@@ -20,6 +27,7 @@ CREATE TABLE users (
   avatar_url    TEXT NULL,
 
   is_active     TINYINT(1) NOT NULL DEFAULT 1,
+  approval_status INT NULL COMMENT '0=PENDING, 1=APPROVED, 2=REJECTED',
 
   rating_avg    DECIMAL(3,2) NOT NULL DEFAULT 0.00,
   rating_count  INT NOT NULL DEFAULT 0,
@@ -49,9 +57,10 @@ CREATE TABLE bike_categories (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE size_options (
-  id        BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  label     VARCHAR(50) NOT NULL UNIQUE,    -- 48/50/52 or S/M/L...
-  is_active TINYINT(1) NOT NULL DEFAULT 1
+  id         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  label      VARCHAR(50) NOT NULL UNIQUE,    -- 48/50/52 or S/M/L...
+  is_active  TINYINT(1) NOT NULL DEFAULT 1,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
@@ -356,4 +365,71 @@ CREATE TABLE dispute_events (
   CONSTRAINT fk_dispute_events_actor FOREIGN KEY (actor_id) REFERENCES users(id),
 
   INDEX idx_dispute_events_dispute (dispute_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- -------------------------
+-- 10) NOTIFICATIONS
+-- -------------------------
+CREATE TABLE notifications (
+  id                  BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  user_id             BIGINT UNSIGNED NOT NULL,
+  type                VARCHAR(50) NOT NULL,
+  title               VARCHAR(255) NOT NULL,
+  message             TEXT NOT NULL,
+  is_read             TINYINT(1) NOT NULL DEFAULT 0,
+  related_entity_id   BIGINT NULL,
+  related_entity_type VARCHAR(50) NULL,
+  action_url          TEXT NULL,
+  created_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  CONSTRAINT fk_notifications_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+
+  INDEX idx_notifications_user (user_id),
+  INDEX idx_notifications_is_read (is_read),
+  INDEX idx_notifications_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- -------------------------
+-- 11) CHAT
+-- -------------------------
+CREATE TABLE chat_conversations (
+  id                     BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  listing_id             BIGINT UNSIGNED NULL,
+  buyer_id               BIGINT UNSIGNED NOT NULL,
+  seller_id              BIGINT UNSIGNED NOT NULL,
+  last_message_at        TIMESTAMP NULL,
+  last_message           TEXT NULL,
+  last_message_sender_id BIGINT NULL,
+  unread_count_buyer     INT NOT NULL DEFAULT 0,
+  unread_count_seller    INT NOT NULL DEFAULT 0,
+  created_at             TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  CONSTRAINT fk_chat_conv_listing FOREIGN KEY (listing_id) REFERENCES listings(id) ON DELETE SET NULL,
+  CONSTRAINT fk_chat_conv_buyer FOREIGN KEY (buyer_id) REFERENCES users(id) ON DELETE CASCADE,
+  CONSTRAINT fk_chat_conv_seller FOREIGN KEY (seller_id) REFERENCES users(id) ON DELETE CASCADE,
+
+  INDEX idx_chat_conv_buyer (buyer_id),
+  INDEX idx_chat_conv_seller (seller_id),
+  INDEX idx_chat_conv_listing (listing_id),
+  UNIQUE KEY uq_chat_conv_buyer_seller_listing (buyer_id, seller_id, listing_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+CREATE TABLE chat_messages (
+  id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  conversation_id BIGINT UNSIGNED NOT NULL,
+  sender_id       BIGINT UNSIGNED NOT NULL,
+  content         TEXT NOT NULL,
+  is_read         TINYINT(1) NOT NULL DEFAULT 0,
+  read_at         TIMESTAMP NULL,
+  created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  CONSTRAINT fk_chat_msg_conversation FOREIGN KEY (conversation_id) REFERENCES chat_conversations(id) ON DELETE CASCADE,
+  CONSTRAINT fk_chat_msg_sender FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
+
+  INDEX idx_chat_msg_conversation (conversation_id),
+  INDEX idx_chat_msg_sender (sender_id),
+  INDEX idx_chat_msg_created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
