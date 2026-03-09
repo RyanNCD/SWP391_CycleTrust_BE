@@ -173,6 +173,16 @@ public class VNPayService : IVNPayService
                     }
                     order.UpdatedAt = DateTime.UtcNow;
                 }
+                else if (order != null && responseCode != VNPayResponseCode.SUCCESS)
+                {
+                    // Handle failed/cancelled payment
+                    if (payment.Type == PaymentType.FULL)
+                    {
+                        order.Status = OrderStatus.CANCELED;
+                    }
+                    // For DEPOSIT type, keep status as DEPOSIT_PENDING to allow retry
+                    order.UpdatedAt = DateTime.UtcNow;
+                }
 
                 await _context.SaveChangesAsync();
             }
