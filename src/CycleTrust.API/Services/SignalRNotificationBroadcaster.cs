@@ -18,13 +18,18 @@ public class SignalRNotificationBroadcaster : INotificationBroadcaster
     {
         try
         {
+            Console.WriteLine($"[SignalR] Broadcasting notification to user_{userId}");
+            Console.WriteLine($"[SignalR] Notification: {notification.Title}");
+            
             await _hubContext.Clients
                 .Group($"user_{userId}")
                 .SendAsync("ReceiveNotification", notification);
+                
+            Console.WriteLine($"[SignalR] Notification broadcast completed");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Failed to broadcast notification: {ex.Message}");
+            Console.WriteLine($"[SignalR] Failed to broadcast notification: {ex.Message}");
         }
     }
 }

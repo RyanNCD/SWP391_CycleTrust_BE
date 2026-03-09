@@ -18,13 +18,19 @@ public class SignalRMessageBroadcaster : IMessageBroadcaster
     {
         try
         {
+            Console.WriteLine($"[SignalR] Broadcasting message to conversation_{conversationId}");
+            Console.WriteLine($"[SignalR] Message: {message.Content}");
+            Console.WriteLine($"[SignalR] Sender: {message.SenderName}");
+            
             await _hubContext.Clients
                 .Group($"conversation_{conversationId}")
                 .SendAsync("ReceiveMessage", message);
+                
+            Console.WriteLine($"[SignalR] Message broadcast completed");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Failed to broadcast message: {ex.Message}");
+            Console.WriteLine($"[SignalR] Failed to broadcast message: {ex.Message}");
         }
     }
 }

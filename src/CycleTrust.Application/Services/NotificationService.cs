@@ -51,15 +51,18 @@ public class NotificationService : INotificationService
         await _context.SaveChangesAsync();
 
         var notificationDto = _mapper.Map<NotificationDto>(notification);
+        Console.WriteLine($"[NotificationService] Created notification ID {notificationDto.Id} for user {request.UserId}");
 
         // Broadcast notification via SignalR
         try
         {
+            Console.WriteLine($"[NotificationService] Broadcasting notification to user {request.UserId}");
             await _notificationBroadcaster.BroadcastNotificationAsync(request.UserId, notificationDto);
+            Console.WriteLine($"[NotificationService] Notification broadcast completed");
         }
-        catch
+        catch (Exception ex)
         {
-            // Broadcast failed, don't fail the notification creation
+            Console.WriteLine($"[NotificationService] Broadcast failed: {ex.Message}");
         }
 
         return notificationDto;

@@ -9,11 +9,15 @@ public class ChatHub : Hub
     public override async Task OnConnectedAsync()
     {
         var userId = Context.User?.FindFirst("userId")?.Value;
+        Console.WriteLine($"[ChatHub] User connecting: {userId}");
+        
         if (!string.IsNullOrEmpty(userId))
         {
             // Add user to their personal chat group
             await Groups.AddToGroupAsync(Context.ConnectionId, $"chat_{userId}");
+            Console.WriteLine($"[ChatHub] User {userId} added to group chat_{userId}");
         }
+        
         await base.OnConnectedAsync();
     }
 
@@ -29,7 +33,9 @@ public class ChatHub : Hub
 
     public async Task JoinConversation(string conversationId)
     {
+        Console.WriteLine($"[ChatHub] User joining conversation_{conversationId}");
         await Groups.AddToGroupAsync(Context.ConnectionId, $"conversation_{conversationId}");
+        Console.WriteLine($"[ChatHub] User added to conversation_{conversationId}");
     }
 
     public async Task LeaveConversation(string conversationId)

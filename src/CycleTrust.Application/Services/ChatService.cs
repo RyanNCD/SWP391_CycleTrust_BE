@@ -213,6 +213,7 @@ public class ChatService : IChatService
         // Create notification for receiver
         try
         {
+            Console.WriteLine($"[ChatService] Creating notification for user {receiverId}");
             await _notificationService.CreateNotificationAsync(new DTOs.Notification.CreateNotificationRequest
             {
                 UserId = receiverId,
@@ -224,19 +225,21 @@ public class ChatService : IChatService
                 ActionUrl = $"/chat/{conversation.Id}"
             });
         }
-        catch
+        catch (Exception ex)
         {
-            // Notification failed, don't fail the message send
+            Console.WriteLine($"[ChatService] Notification creation failed: {ex.Message}");
         }
 
         // Broadcast message via SignalR
         try
         {
+            Console.WriteLine($"[ChatService] Broadcasting message to conversation {conversation.Id}");
             await _messageBroadcaster.BroadcastMessageAsync(conversation.Id, messageDto);
+            Console.WriteLine($"[ChatService] Message broadcast completed");
         }
-        catch
+        catch (Exception ex)
         {
-            // Broadcast failed, don't fail the message send
+            Console.WriteLine($"[ChatService] Broadcast failed: {ex.Message}");
         }
 
         return messageDto;
