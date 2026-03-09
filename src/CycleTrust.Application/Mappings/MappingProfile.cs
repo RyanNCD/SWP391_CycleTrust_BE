@@ -6,6 +6,8 @@ using CycleTrust.Application.DTOs.Catalog;
 using CycleTrust.Application.DTOs.Listing;
 using CycleTrust.Application.DTOs.Order;
 using CycleTrust.Application.DTOs.Review;
+using CycleTrust.Application.DTOs.Notification;
+using CycleTrust.Application.DTOs.Chat;
 
 namespace CycleTrust.Application.Mappings;
 
@@ -64,5 +66,23 @@ public class MappingProfile : Profile
         // DepositPolicy
         CreateMap<DepositPolicy, CycleTrust.Application.DTOs.DepositPolicy.DepositPolicyDto>()
             .ForMember(d => d.Mode, opt => opt.MapFrom(s => s.Mode.ToString()));
+
+        // Notification
+        CreateMap<Notification, NotificationDto>()
+            .ForMember(d => d.Type, opt => opt.MapFrom(s => s.Type));
+
+        CreateMap<CreateNotificationRequest, Notification>();
+
+        // Chat
+        CreateMap<ChatConversation, ChatConversationDto>()
+            .ForMember(d => d.ListingTitle, opt => opt.MapFrom(s => s.Listing != null ? s.Listing.Title : null))
+            .ForMember(d => d.BuyerName, opt => opt.MapFrom(s => s.Buyer.FullName))
+            .ForMember(d => d.BuyerAvatar, opt => opt.MapFrom(s => s.Buyer.AvatarUrl))
+            .ForMember(d => d.SellerName, opt => opt.MapFrom(s => s.Seller.FullName))
+            .ForMember(d => d.SellerAvatar, opt => opt.MapFrom(s => s.Seller.AvatarUrl)); // Will be set in service based on current user
+
+        CreateMap<ChatMessage, ChatMessageDto>()
+            .ForMember(d => d.SenderName, opt => opt.MapFrom(s => s.Sender.FullName))
+            .ForMember(d => d.SenderAvatar, opt => opt.MapFrom(s => s.Sender.AvatarUrl));
     }
 }

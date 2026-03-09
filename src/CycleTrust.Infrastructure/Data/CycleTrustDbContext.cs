@@ -23,6 +23,9 @@ public class CycleTrustDbContext : DbContext
     public DbSet<ViolationReport> ViolationReports => Set<ViolationReport>();
     public DbSet<Dispute> Disputes => Set<Dispute>();
     public DbSet<DisputeEvent> DisputeEvents => Set<DisputeEvent>();
+    public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<ChatConversation> ChatConversations => Set<ChatConversation>();
+    public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -340,6 +343,75 @@ public class CycleTrustDbContext : DbContext
             entity.HasOne(e => e.Actor).WithMany().HasForeignKey(e => e.ActorId).OnDelete(DeleteBehavior.SetNull);
 
             entity.HasIndex(e => e.DisputeId);
+        });
+
+        // Notification
+        modelBuilder.Entity<Notification>(entity =>
+        {
+            entity.ToTable("notifications");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.Type).HasColumnName("type").HasConversion<string>().IsRequired();
+            entity.Property(e => e.Title).HasColumnName("title").HasMaxLength(255).IsRequired();
+            entity.Property(e => e.Message).HasColumnName("message").IsRequired();
+            entity.Property(e => e.IsRead).HasColumnName("is_read");
+            entity.Property(e => e.RelatedEntityId).HasColumnName("related_entity_id");
+            entity.Property(e => e.RelatedEntityType).HasColumnName("related_entity_type").HasMaxLength(50);
+            entity.Property(e => e.ActionUrl).HasColumnName("action_url");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => e.IsRead);
+            entity.HasIndex(e => e.CreatedAt);
+        });
+
+        // ChatConversation
+        modelBuilder.Entity<ChatConversation>(entity =>
+        {
+            entity.ToTable("chat_conversations");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.ListingId).HasColumnName("listing_id");
+            entity.Property(e => e.BuyerId).HasColumnName("buyer_id");
+            entity.Property(e => e.SellerId).HasColumnName("seller_id");
+            entity.Property(e => e.LastMessageAt).HasColumnName("last_message_at");
+            entity.Property(e => e.LastMessage).HasColumnName("last_message");
+            entity.Property(e => e.LastMessageSenderId).HasColumnName("last_message_sender_id");
+            entity.Property(e => e.UnreadCountBuyer).HasColumnName("unread_count_buyer");
+            entity.Property(e => e.UnreadCountSeller).HasColumnName("unread_count_seller");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+
+            entity.HasOne(e => e.Listing).WithMany().HasForeignKey(e => e.ListingId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.Buyer).WithMany().HasForeignKey(e => e.BuyerId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Seller).WithMany().HasForeignKey(e => e.SellerId).OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(e => e.BuyerId);
+            entity.HasIndex(e => e.SellerId);
+            entity.HasIndex(e => e.ListingId);
+            entity.HasIndex(e => new { e.BuyerId, e.SellerId, e.ListingId }).IsUnique();
+        });
+
+        // ChatMessage
+        modelBuilder.Entity<ChatMessage>(entity =>
+        {
+            entity.ToTable("chat_messages");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.ConversationId).HasColumnName("conversation_id");
+            entity.Property(e => e.SenderId).HasColumnName("sender_id");
+            entity.Property(e => e.Content).HasColumnName("content").IsRequired();
+            entity.Property(e => e.IsRead).HasColumnName("is_read");
+            entity.Property(e => e.ReadAt).HasColumnName("read_at");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+
+            entity.HasOne(e => e.Conversation).WithMany(c => c.Messages).HasForeignKey(e => e.ConversationId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Sender).WithMany().HasForeignKey(e => e.SenderId).OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(e => e.ConversationId);
+            entity.HasIndex(e => e.CreatedAt);
         });
     }
 }

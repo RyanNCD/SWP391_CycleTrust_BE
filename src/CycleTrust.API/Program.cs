@@ -9,6 +9,8 @@ using CycleTrust.Infrastructure.Repositories;
 using CycleTrust.Application.Services;
 using CycleTrust.Application.Mappings;
 using CycleTrust.Core.Interfaces;
+using CycleTrust.API.Hubs;
+using CycleTrust.API.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -35,6 +37,12 @@ builder.Services.AddScoped<IDepositPolicyService, DepositPolicyService>();
 builder.Services.AddScoped<IUserManagementService, UserManagementService>();
 builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
 builder.Services.AddScoped<IVNPayService, VNPayService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<IChatService, ChatService>();
+
+// SignalR Broadcasters
+builder.Services.AddScoped<INotificationBroadcaster, SignalRNotificationBroadcaster>();
+builder.Services.AddScoped<IMessageBroadcaster, SignalRMessageBroadcaster>();
 
 // AutoMapper
 builder.Services.AddAutoMapper(typeof(MappingProfile));
@@ -57,9 +65,28 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidAudience = builder.Configuration["Jwt:Audience"],
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
         };
+        
+        // Allow SignalR to use JWT from query string
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+                if (!string.IsNullOrEmpty(accessToken) &&
+                    (path.StartsWithSegments("/hubs/notification") || path.StartsWithSegments("/hubs/chat")))
+                {
+                    context.Token = accessToken;
+                }
+                return Task.CompletedTask;
+            }
+        };
     });
 
 builder.Services.AddAuthorization();
+
+// SignalR
+builder.Services.AddSignalR();
 
 // Controllers
 builder.Services.AddControllers();
@@ -69,9 +96,10 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        policy.AllowAnyOrigin()
+        policy.WithOrigins("http://localhost:5173", "http://localhost:3000")
               .AllowAnyMethod()
-              .AllowAnyHeader();
+              .AllowAnyHeader()
+              .AllowCredentials(); // Required for SignalR
     });
 });
 
@@ -124,5 +152,7 @@ app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapHub<NotificationHub>("/hubs/notification");
+app.MapHub<ChatHub>("/hubs/chat");
 
 app.Run();

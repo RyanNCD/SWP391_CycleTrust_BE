@@ -1,4 +1,4 @@
-using CycleTrust.Domain.Enums;
+using CycleTrust.Core.Enums;
 
 namespace CycleTrust.Application.DTOs;
 

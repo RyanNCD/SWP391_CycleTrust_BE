@@ -5,6 +5,7 @@ using CycleTrust.Application.DTOs.Common;
 using CycleTrust.Application.DTOs.Order;
 using CycleTrust.Application.DTOs;
 using CycleTrust.Application.Services;
+using CycleTrust.Core.Enums;
 
 namespace CycleTrust.API.Controllers;
 
