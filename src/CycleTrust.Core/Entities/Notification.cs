@@ -13,6 +13,5 @@ public class Notification : BaseEntity
     public string? RelatedEntityType { get; set; } // "Order", "Listing", "Dispute", etc.
     public string? ActionUrl { get; set; }
     
-    // Navigation
     public User User { get; set; } = null!;
 }

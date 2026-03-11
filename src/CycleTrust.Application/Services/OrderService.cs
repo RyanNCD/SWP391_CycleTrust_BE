@@ -4,6 +4,7 @@ using CycleTrust.Core.Entities;
 using CycleTrust.Core.Enums;
 using CycleTrust.Infrastructure.Data;
 using CycleTrust.Application.DTOs.Order;
+using CycleTrust.Application.DTOs.Notification;
 
 namespace CycleTrust.Application.Services;
 
@@ -14,6 +15,7 @@ public interface IOrderService
     Task<List<OrderDto>> GetMyOrdersAsync(long userId, string role);
     Task<List<OrderDto>> GetAllOrdersForAdminAsync(string? status, DateTime? fromDate, DateTime? toDate);
     Task<PaymentDto> CreatePaymentAsync(long userId, PaymentRequest request);
+    Task<PaymentDto> CreateRemainingPaymentAsync(long userId, long orderId, PaymentRequest request);
     Task<PaymentDto> ProcessPaymentCallbackAsync(PaymentCallbackRequest request);
     Task<OrderDto> UpdateOrderStatusAsync(long id, long userId, UpdateOrderStatusRequest request);
 }
@@ -22,11 +24,13 @@ public class OrderService : IOrderService
 {
     private readonly CycleTrustDbContext _context;
     private readonly IMapper _mapper;
+    private readonly INotificationService _notificationService;
 
-    public OrderService(CycleTrustDbContext context, IMapper mapper)
+    public OrderService(CycleTrustDbContext context, IMapper mapper, INotificationService notificationService)
     {
         _context = context;
         _mapper = mapper;
+        _notificationService = notificationService;
     }
 
     public async Task<OrderDto> CreateOrderAsync(long buyerId, CreateOrderRequest request)
@@ -99,6 +103,25 @@ public class OrderService : IOrderService
 
         _context.Orders.Add(order);
         await _context.SaveChangesAsync();
+
+        // Notify seller about new order
+        try
+        {
+            await _notificationService.CreateNotificationAsync(new CreateNotificationRequest
+            {
+                UserId = listing.SellerId,
+                Type = NotificationType.ORDER_CREATED,
+                Title = "Đơn hàng mới",
+                Message = $"Bạn có đơn hàng mới cho xe {listing.Title}",
+                RelatedEntityId = order.Id,
+                RelatedEntityType = "Order",
+                ActionUrl = $"/seller/orders/{order.Id}"
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to send ORDER_CREATED notification: {ex.Message}");
+        }
 
         return await GetOrderByIdAsync(order.Id);
     }
@@ -217,8 +240,51 @@ public class OrderService : IOrderService
         return _mapper.Map<PaymentDto>(payment);
     }
 
+    public async Task<PaymentDto> CreateRemainingPaymentAsync(long userId, long orderId, PaymentRequest request)
+    {
+        var order = await _context.Orders
+            .Include(o => o.Payments)
+            .Include(o => o.Listing)
+            .FirstOrDefaultAsync(o => o.Id == orderId && o.BuyerId == userId);
+
+        if (order == null)
+            throw new Exception("Order không tồn tại hoặc không có quyền");
+
+        if (order.Status != OrderStatus.DELIVERED)
+            throw new Exception("Order chưa được giao hàng");
+
+        if (!order.DepositRequired || !order.DepositPaidAt.HasValue)
+            throw new Exception("Order không phải là order đặt cọc");
+
+        var fullPaymentExists = order.Payments.Any(p => p.Type == PaymentType.FULL && p.Status == PaymentStatus.PAID);
+        if (fullPaymentExists)
+            throw new Exception("Đã thanh toán phần còn lại");
+
+        var remainingAmount = order.PriceAmount - order.DepositAmount;
+
+        var payment = new Payment
+        {
+            OrderId = order.Id,
+            Type = PaymentType.FULL,
+            Status = PaymentStatus.PENDING,
+            Amount = remainingAmount,
+            Currency = order.Currency,
+            Provider = request.Provider
+        };
+
+        _context.Payments.Add(payment);
+        await _context.SaveChangesAsync();
+
+        return _mapper.Map<PaymentDto>(payment);
+    }
+
     public async Task<PaymentDto> ProcessPaymentCallbackAsync(PaymentCallbackRequest request)
     {
+        Console.WriteLine($"========== CALLBACK START ==========");
+        Console.WriteLine($"Request PaymentId: {request.PaymentId}");
+        Console.WriteLine($"Request Status: {request.Status}");
+        Console.WriteLine($"Request ProviderTxnId: {request.ProviderTxnId}");
+        
         var payment = await _context.Payments
             .Include(p => p.Order)
             .ThenInclude(o => o.Listing)
@@ -227,31 +293,71 @@ public class OrderService : IOrderService
         if (payment == null)
             throw new Exception("Payment không tồn tại");
 
+        Console.WriteLine($"Payment found - ID: {payment.Id}, Type: {payment.Type}, Current Status: {payment.Status}");
+        Console.WriteLine($"Order ID: {payment.OrderId}");
+
         var status = Enum.Parse<PaymentStatus>(request.Status, true);
         payment.Status = status;
         payment.ProviderTxnId = request.ProviderTxnId;
 
+        Console.WriteLine($"Parsed Status: {status}");
+        Console.WriteLine($"Status == PAID: {status == PaymentStatus.PAID}");
+
         if (status == PaymentStatus.PAID)
         {
+            Console.WriteLine(">>> Inside PAID block");
             payment.PaidAt = DateTime.UtcNow;
+
+            Console.WriteLine($"Payment Type: {payment.Type}");
+            Console.WriteLine($"Is DEPOSIT: {payment.Type == PaymentType.DEPOSIT}");
+            Console.WriteLine($"Is FULL: {payment.Type == PaymentType.FULL}");
 
             if (payment.Type == PaymentType.DEPOSIT)
             {
+                Console.WriteLine(">>> Processing DEPOSIT payment");
                 payment.Order.Status = OrderStatus.DEPOSIT_PAID;
                 payment.Order.DepositPaidAt = DateTime.UtcNow;
                 payment.Order.ReserveExpiresAt = DateTime.UtcNow.AddDays(7);
             }
             else if (payment.Type == PaymentType.FULL)
             {
-                // If this is remaining payment after delivery, complete the order
-                if (payment.Order.Status == OrderStatus.DELIVERED && payment.Order.DepositPaidAt.HasValue)
+                Console.WriteLine($"========== PAYMENT CALLBACK DEBUG ==========");
+                Console.WriteLine($"Payment ID: {payment.Id}");
+                Console.WriteLine($"Order ID: {payment.Order.Id}");
+                Console.WriteLine($"Order Status: {payment.Order.Status}");
+                Console.WriteLine($"Order DeliveredAt: {payment.Order.DeliveredAt?.ToString() ?? "NULL"}");
+                Console.WriteLine($"Order DepositPaidAt: {payment.Order.DepositPaidAt?.ToString() ?? "NULL"}");
+                Console.WriteLine($"Has DeliveredAt: {payment.Order.DeliveredAt.HasValue}");
+                Console.WriteLine($"==========================================");
+                
+                if (payment.Order.DeliveredAt.HasValue)
                 {
+                    Console.WriteLine(">>> SETTING ORDER TO COMPLETED");
                     payment.Order.Status = OrderStatus.COMPLETED;
                     payment.Order.CompletedAt = DateTime.UtcNow;
                     payment.Order.Listing.Status = ListingStatus.SOLD;
+                    
+                    try
+                    {
+                        await _notificationService.CreateNotificationAsync(new CreateNotificationRequest
+                        {
+                            UserId = payment.Order.SellerId,
+                            Type = NotificationType.ORDER_COMPLETED,
+                            Title = "Đơn hàng hoàn thành",
+                            Message = $"Đơn hàng xe {payment.Order.Listing.Title} đã hoàn thành",
+                            RelatedEntityId = payment.Order.Id,
+                            RelatedEntityType = "Order",
+                            ActionUrl = $"/seller/orders/{payment.Order.Id}"
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Failed to send ORDER_COMPLETED notification: {ex.Message}");
+                    }
                 }
                 else
                 {
+                    Console.WriteLine(">>> SETTING ORDER TO CONFIRMED");
                     payment.Order.Status = OrderStatus.CONFIRMED;
                 }
             }
@@ -282,22 +388,99 @@ public class OrderService : IOrderService
         {
             order.Status = OrderStatus.SHIPPING;
             order.ShippingNote = request.Note;
+            
+            // Notify buyer
+            try
+            {
+                await _notificationService.CreateNotificationAsync(new CreateNotificationRequest
+                {
+                    UserId = order.BuyerId,
+                    Type = NotificationType.ORDER_SHIPPING,
+                    Title = "Đơn hàng đang giao",
+                    Message = $"Người bán đã xác nhận gửi hàng cho xe {order.Listing.Title}",
+                    RelatedEntityId = order.Id,
+                    RelatedEntityType = "Order",
+                    ActionUrl = $"/buyer/orders/{order.Id}"
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to send ORDER_SHIPPING notification: {ex.Message}");
+            }
         }
         else if (newStatus == OrderStatus.DELIVERED && order.BuyerId == userId)
         {
             order.Status = OrderStatus.DELIVERED;
             order.DeliveredAt = DateTime.UtcNow;
+            
+            // Notify seller
+            try
+            {
+                await _notificationService.CreateNotificationAsync(new CreateNotificationRequest
+                {
+                    UserId = order.SellerId,
+                    Type = NotificationType.ORDER_DELIVERED,
+                    Title = "Đã giao hàng",
+                    Message = $"Người mua đã xác nhận nhận hàng xe {order.Listing.Title}",
+                    RelatedEntityId = order.Id,
+                    RelatedEntityType = "Order",
+                    ActionUrl = $"/seller/orders/{order.Id}"
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to send ORDER_DELIVERED notification: {ex.Message}");
+            }
         }
         else if (newStatus == OrderStatus.COMPLETED && order.BuyerId == userId)
         {
             order.Status = OrderStatus.COMPLETED;
             order.CompletedAt = DateTime.UtcNow;
             order.Listing.Status = ListingStatus.SOLD;
+            
+            // Notify seller
+            try
+            {
+                await _notificationService.CreateNotificationAsync(new CreateNotificationRequest
+                {
+                    UserId = order.SellerId,
+                    Type = NotificationType.ORDER_COMPLETED,
+                    Title = "Đơn hàng hoàn thành",
+                    Message = $"Đơn hàng xe {order.Listing.Title} đã hoàn thành",
+                    RelatedEntityId = order.Id,
+                    RelatedEntityType = "Order",
+                    ActionUrl = $"/seller/orders/{order.Id}"
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to send ORDER_COMPLETED notification: {ex.Message}");
+            }
         }
         else if (newStatus == OrderStatus.CANCELED)
         {
             order.Status = OrderStatus.CANCELED;
             order.CanceledReason = request.Note;
+            
+            // Notify the other party
+            long notifyUserId = order.BuyerId == userId ? order.SellerId : order.BuyerId;
+            try
+            {
+                await _notificationService.CreateNotificationAsync(new CreateNotificationRequest
+                {
+                    UserId = notifyUserId,
+                    Type = NotificationType.ORDER_CANCELED,
+                    Title = "Đơn hàng đã hủy",
+                    Message = $"Đơn hàng xe {order.Listing.Title} đã bị hủy. Lý do: {request.Note ?? "Không có lý do"}",
+                    RelatedEntityId = order.Id,
+                    RelatedEntityType = "Order",
+                    ActionUrl = order.BuyerId == userId ? $"/buyer/orders/{order.Id}" : $"/seller/orders/{order.Id}"
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to send ORDER_CANCELED notification: {ex.Message}");
+            }
         }
         else
         {

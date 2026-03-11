@@ -4,6 +4,8 @@ using CycleTrust.Core.Entities;
 using CycleTrust.Core.Enums;
 using CycleTrust.Infrastructure.Data;
 using CycleTrust.Application.DTOs.Listing;
+using CycleTrust.Application.DTOs.Notification;
+using CycleTrust.Application.DTOs.Common;
 
 namespace CycleTrust.Application.Services;
 
@@ -12,22 +14,29 @@ public interface IListingService
     Task<ListingDto> CreateListingAsync(long sellerId, CreateListingRequest request);
     Task<ListingDto> GetListingByIdAsync(long id);
     Task<List<ListingDto>> GetListingsAsync(string? status = null, long? categoryId = null);
+    Task<List<ListingDto>> GetAllListingsForAdminAsync(string? status = null);
+    Task<List<ListingDto>> GetMyInspectionsAsync(long inspectorId);
+    Task<PagedResponse<ListingDto>> GetListingsPagedAsync(int pageNumber, int pageSize, string? status = null, long? categoryId = null, long? brandId = null, decimal? minPrice = null, decimal? maxPrice = null, string? search = null);
     Task<List<ListingDto>> GetMyListingsAsync(long sellerId);
+    Task<PagedResponse<ListingDto>> GetMyListingsPagedAsync(long sellerId, int pageNumber, int pageSize);
     Task<ListingDto> UpdateListingAsync(long id, long sellerId, UpdateListingRequest request);
     Task<ListingDto> SubmitForApprovalAsync(long id, long sellerId);
     Task<ListingDto> ApproveListingAsync(long id, long adminId, ApproveListingRequest request);
     Task<InspectionDto> CreateInspectionAsync(long listingId, long inspectorId, CreateInspectionRequest request);
+    Task<InspectionDto> UpdateInspectionAsync(long listingId, long userId, string userRole, CreateInspectionRequest request);
 }
 
 public class ListingService : IListingService
 {
     private readonly CycleTrustDbContext _context;
     private readonly IMapper _mapper;
+    private readonly INotificationService _notificationService;
 
-    public ListingService(CycleTrustDbContext context, IMapper mapper)
+    public ListingService(CycleTrustDbContext context, IMapper mapper, INotificationService notificationService)
     {
         _context = context;
         _mapper = mapper;
+        _notificationService = notificationService;
     }
 
     public async Task<ListingDto> CreateListingAsync(long sellerId, CreateListingRequest request)
@@ -78,6 +87,12 @@ public class ListingService : IListingService
             .Include(l => l.Media)
             .Where(l => !l.IsDeleted);
 
+        // Filter out listings with active orders (orders that are not CANCELED or COMPLETED)
+        query = query.Where(l => !_context.Orders.Any(o => 
+            o.ListingId == l.Id && 
+            o.Status != OrderStatus.CANCELED && 
+            o.Status != OrderStatus.COMPLETED));
+
         if (!string.IsNullOrEmpty(status))
         {
             var statusEnum = Enum.Parse<ListingStatus>(status, true);
@@ -89,6 +104,113 @@ public class ListingService : IListingService
 
         var listings = await query.OrderByDescending(l => l.CreatedAt).ToListAsync();
         return _mapper.Map<List<ListingDto>>(listings);
+    }
+
+    public async Task<List<ListingDto>> GetAllListingsForAdminAsync(string? status = null)
+    {
+        var query = _context.Listings
+            .Include(l => l.Seller)
+            .Include(l => l.Brand)
+            .Include(l => l.Category)
+            .Include(l => l.SizeOption)
+            .Include(l => l.Media)
+            .Where(l => !l.IsDeleted);
+
+        // Admin sees ALL listings, no filter for active orders
+
+        if (!string.IsNullOrEmpty(status))
+        {
+            var statusEnum = Enum.Parse<ListingStatus>(status, true);
+            query = query.Where(l => l.Status == statusEnum);
+        }
+
+        var listings = await query.OrderByDescending(l => l.CreatedAt).ToListAsync();
+        return _mapper.Map<List<ListingDto>>(listings);
+    }
+
+    public async Task<List<ListingDto>> GetMyInspectionsAsync(long inspectorId)
+    {
+        var listings = await _context.Listings
+            .Include(l => l.Seller)
+            .Include(l => l.Brand)
+            .Include(l => l.Category)
+            .Include(l => l.SizeOption)
+            .Include(l => l.Media)
+            .Include(l => l.Inspection)
+                .ThenInclude(i => i.Inspector)
+            .Where(l => !l.IsDeleted && l.Inspection != null && l.Inspection.InspectorId == inspectorId)
+            .OrderByDescending(l => l.Inspection!.CreatedAt)
+            .ToListAsync();
+
+        return _mapper.Map<List<ListingDto>>(listings);
+    }
+
+    public async Task<PagedResponse<ListingDto>> GetListingsPagedAsync(
+        int pageNumber, 
+        int pageSize, 
+        string? status = null, 
+        long? categoryId = null, 
+        long? brandId = null, 
+        decimal? minPrice = null, 
+        decimal? maxPrice = null, 
+        string? search = null)
+    {
+        var query = _context.Listings
+            .Include(l => l.Seller)
+            .Include(l => l.Brand)
+            .Include(l => l.Category)
+            .Include(l => l.SizeOption)
+            .Include(l => l.Media)
+            .Where(l => !l.IsDeleted);
+
+        // Filter out listings with active orders
+        query = query.Where(l => !_context.Orders.Any(o => 
+            o.ListingId == l.Id && 
+            o.Status != OrderStatus.CANCELED && 
+            o.Status != OrderStatus.COMPLETED));
+
+        if (!string.IsNullOrEmpty(status))
+        {
+            var statusEnum = Enum.Parse<ListingStatus>(status, true);
+            query = query.Where(l => l.Status == statusEnum);
+        }
+
+        if (categoryId.HasValue)
+            query = query.Where(l => l.CategoryId == categoryId);
+
+        if (brandId.HasValue)
+            query = query.Where(l => l.BrandId == brandId);
+
+        if (minPrice.HasValue)
+            query = query.Where(l => l.PriceAmount >= minPrice.Value);
+
+        if (maxPrice.HasValue)
+            query = query.Where(l => l.PriceAmount <= maxPrice.Value);
+
+        if (!string.IsNullOrEmpty(search))
+        {
+            var searchLower = search.ToLower();
+            query = query.Where(l => 
+                l.Title.ToLower().Contains(searchLower) ||
+                (l.Description != null && l.Description.ToLower().Contains(searchLower)) ||
+                (l.Brand != null && l.Brand.Name.ToLower().Contains(searchLower)));
+        }
+
+        var totalCount = await query.CountAsync();
+
+        var listings = await query
+            .OrderByDescending(l => l.CreatedAt)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return new PagedResponse<ListingDto>
+        {
+            Items = _mapper.Map<List<ListingDto>>(listings),
+            TotalCount = totalCount,
+            PageNumber = pageNumber,
+            PageSize = pageSize
+        };
     }
 
     public async Task<List<ListingDto>> GetMyListingsAsync(long sellerId)
@@ -103,6 +225,33 @@ public class ListingService : IListingService
 
         var listings = await query.OrderByDescending(l => l.CreatedAt).ToListAsync();
         return _mapper.Map<List<ListingDto>>(listings);
+    }
+
+    public async Task<PagedResponse<ListingDto>> GetMyListingsPagedAsync(long sellerId, int pageNumber, int pageSize)
+    {
+        var query = _context.Listings
+            .Include(l => l.Seller)
+            .Include(l => l.Brand)
+            .Include(l => l.Category)
+            .Include(l => l.SizeOption)
+            .Include(l => l.Media)
+            .Where(l => l.SellerId == sellerId && !l.IsDeleted);
+
+        var totalCount = await query.CountAsync();
+
+        var listings = await query
+            .OrderByDescending(l => l.CreatedAt)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return new PagedResponse<ListingDto>
+        {
+            Items = _mapper.Map<List<ListingDto>>(listings),
+            TotalCount = totalCount,
+            PageNumber = pageNumber,
+            PageSize = pageSize
+        };
     }
 
     public async Task<ListingDto> UpdateListingAsync(long id, long sellerId, UpdateListingRequest request)
@@ -186,11 +335,49 @@ public class ListingService : IListingService
             listing.Status = ListingStatus.APPROVED;
             listing.ApprovedBy = adminId;
             listing.ApprovedAt = DateTime.UtcNow;
+            
+            // Notify seller about approval
+            try
+            {
+                await _notificationService.CreateNotificationAsync(new CreateNotificationRequest
+                {
+                    UserId = listing.SellerId,
+                    Type = NotificationType.LISTING_APPROVED,
+                    Title = "Listing đã được duyệt",
+                    Message = $"Xe {listing.Title} đã được admin phê duyệt và có thể kiểm định",
+                    RelatedEntityId = id,
+                    RelatedEntityType = "Listing",
+                    ActionUrl = $"/seller/listings/{id}"
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to send LISTING_APPROVED notification: {ex.Message}");
+            }
         }
         else
         {
             listing.Status = ListingStatus.REJECTED;
             listing.RejectedReason = request.Reason;
+            
+            // Notify seller about rejection
+            try
+            {
+                await _notificationService.CreateNotificationAsync(new CreateNotificationRequest
+                {
+                    UserId = listing.SellerId,
+                    Type = NotificationType.LISTING_REJECTED,
+                    Title = "Listing bị từ chối",
+                    Message = $"Xe {listing.Title} đã bị từ chối. Lý do: {request.Reason ?? "Không có lý do"}",
+                    RelatedEntityId = id,
+                    RelatedEntityType = "Listing",
+                    ActionUrl = $"/seller/listings/{id}"
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to send LISTING_REJECTED notification: {ex.Message}");
+            }
         }
 
         listing.UpdatedAt = DateTime.UtcNow;
@@ -228,9 +415,78 @@ public class ListingService : IListingService
 
         await _context.SaveChangesAsync();
 
+        // Notify seller about inspection completion
+        try
+        {
+            await _notificationService.CreateNotificationAsync(new CreateNotificationRequest
+            {
+                UserId = listing.SellerId,
+                Type = NotificationType.INSPECTION_COMPLETED,
+                Title = "Kiểm định hoàn tất",
+                Message = $"Xe {listing.Title} đã được kiểm định và chuyển sang trạng thái VERIFIED",
+                RelatedEntityId = listingId,
+                RelatedEntityType = "Listing",
+                ActionUrl = $"/seller/listings/{listingId}"
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to send INSPECTION_COMPLETED notification: {ex.Message}");
+        }
+
         var result = await _context.Inspections
             .Include(i => i.Inspector)
             .FirstAsync(i => i.Id == inspection.Id);
+
+        return _mapper.Map<InspectionDto>(result);
+    }
+
+    public async Task<InspectionDto> UpdateInspectionAsync(long listingId, long userId, string userRole, CreateInspectionRequest request)
+    {
+        var listing = await _context.Listings
+            .Include(l => l.Inspection)
+            .FirstOrDefaultAsync(l => l.Id == listingId);
+            
+        if (listing == null)
+            throw new Exception("Không tìm thấy listing");
+
+        if (listing.Inspection == null)
+            throw new Exception("Listing chưa được kiểm định");
+
+        // Check permissions: only the inspector who created it or admin can edit
+        if (userRole != "ADMIN" && listing.Inspection.InspectorId != userId)
+            throw new Exception("Bạn không có quyền chỉnh sửa báo cáo kiểm định này");
+
+        // Update inspection
+        listing.Inspection.Summary = request.Summary;
+        listing.Inspection.ChecklistJson = request.ChecklistJson;
+        listing.Inspection.ReportUrl = request.ReportUrl;
+        listing.Inspection.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        // Notify seller about inspection update
+        try
+        {
+            await _notificationService.CreateNotificationAsync(new CreateNotificationRequest
+            {
+                UserId = listing.SellerId,
+                Type = NotificationType.INSPECTION_COMPLETED,
+                Title = "Báo cáo kiểm định đã cập nhật",
+                Message = $"Báo cáo kiểm định cho xe {listing.Title} đã được cập nhật",
+                RelatedEntityId = listingId,
+                RelatedEntityType = "Listing",
+                ActionUrl = $"/seller/listings/{listingId}"
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to send INSPECTION_COMPLETED notification: {ex.Message}");
+        }
+
+        var result = await _context.Inspections
+            .Include(i => i.Inspector)
+            .FirstAsync(i => i.Id == listing.Inspection.Id);
 
         return _mapper.Map<InspectionDto>(result);
     }

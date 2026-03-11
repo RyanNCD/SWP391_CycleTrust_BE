@@ -8,7 +8,6 @@ public class ChatMessage : BaseEntity
     public bool IsRead { get; set; } = false;
     public DateTime? ReadAt { get; set; }
     
-    // Navigation
     public ChatConversation Conversation { get; set; } = null!;
     public User Sender { get; set; } = null!;
 }

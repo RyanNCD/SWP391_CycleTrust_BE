@@ -23,6 +23,9 @@ public class ListingDto
     public string? ConditionNote { get; set; }
     public int? YearModel { get; set; }
     public string Status { get; set; } = string.Empty;
+    public long? ApprovedBy { get; set; }
+    public DateTime? ApprovedAt { get; set; }
+    public string? RejectedReason { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public UserDto? Seller { get; set; }

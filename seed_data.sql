@@ -46,7 +46,7 @@ INSERT INTO users (email, phone, password_hash, role, full_name, is_active, appr
 
 -- Sample Listing (seller1)
 INSERT INTO listings (seller_id, title, description, usage_history, location_text, brand_id, category_id, size_option_id, price_amount, currency, condition_note, year_model, status)
-VALUES (3, 'Giant TCR Advanced Pro 2022', 'Xe đua đường trường cao cấp với khung carbon full', 'Đã sử dụng 1 năm, đi khoảng 2000km chủ yếu tập luyện', 'Hà Nội', 1, 1, 3, 25000000, 'VND', 'Tình trạng tốt, không tai nạn, bảo dưỡng định kỳ', 2022, 'PENDING_APPROVAL');
+VALUES (3, 'Giant TCR Advanced Pro 2022', 'Xe đua đường trường cao cấp với khung carbon full', 'Đã sử dụng 1 năm, đi khoảng 2000km chủ yếu tập luyện', 'Hà Nội', 1, 1, 3, 25000000, 'VND', 'Tình trạng tốt, không tai nạn, bảo dưỡng định kỳ', 2022, 'VERIFIED');
 
 -- Sample Media for listing
 INSERT INTO listing_media (listing_id, type, url, sort_order) VALUES

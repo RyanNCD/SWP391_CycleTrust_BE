@@ -197,6 +197,54 @@ public class OrdersController : ControllerBase
         }
     }
 
+    [Authorize(Roles = "BUYER")]
+    [HttpPost("{id}/payment/remaining")]
+    public async Task<ActionResult<ApiResponse<object>>> PayRemaining(long id)
+    {
+        try
+        {
+            var userId = GetUserId();
+            
+            // Get order and validate
+            var order = await _orderService.GetOrderByIdAsync(id);
+            if (order.BuyerId != userId)
+                return Forbid();
+            
+            // Must be delivered before paying remaining
+            if (order.Status != "DELIVERED")
+                return BadRequest(ApiResponse<object>.ErrorResponse("Order chưa được giao hàng"));
+            
+            // Must have deposit paid
+            if (!order.DepositRequired || !order.DepositPaidAt.HasValue)
+                return BadRequest(ApiResponse<object>.ErrorResponse("Order không phải là order đặt cọc"));
+            
+            var remainingAmount = order.PriceAmount - order.DepositAmount;
+            var orderInfo = $"Thanh toán phần còn lại đơn hàng #{id}";
+            
+            // Create VNPay payment
+            var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1";
+            var vnpayRequest = new VNPayPaymentRequestDto
+            {
+                OrderId = id,
+                Amount = remainingAmount,
+                OrderInfo = orderInfo,
+                ReturnUrl = null, // Use default from config
+                PaymentType = PaymentType.FULL
+            };
+            
+            var vnpayResult = await _vnPayService.CreatePaymentUrl(vnpayRequest, ipAddress);
+            
+            if (!vnpayResult.Success)
+                return BadRequest(ApiResponse<object>.ErrorResponse(vnpayResult.Message ?? "Tạo thanh toán thất bại"));
+            
+            return Ok(ApiResponse<object>.SuccessResponse(new { paymentUrl = vnpayResult.PaymentUrl }));
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ApiResponse<object>.ErrorResponse(ex.Message));
+        }
+    }
+
     [HttpPost("payment/callback")]
     public async Task<ActionResult<ApiResponse<PaymentDto>>> PaymentCallback([FromBody] PaymentCallbackRequest request)
     {

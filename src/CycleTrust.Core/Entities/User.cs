@@ -16,7 +16,6 @@ public class User : BaseEntity
     public int RatingCount { get; set; } = 0;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
-    // Navigation
     public ICollection<Listing> Listings { get; set; } = new List<Listing>();
     public ICollection<Inspection> Inspections { get; set; } = new List<Inspection>();
     public ICollection<Order> OrdersAsBuyer { get; set; } = new List<Order>();

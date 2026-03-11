@@ -63,6 +63,23 @@ public class ReviewService : IReviewService
         };
 
         _context.Reviews.Add(review);
+
+        // Update seller rating
+        var seller = await _context.Users.FindAsync(order.SellerId);
+        if (seller != null)
+        {
+            var allSellerReviews = await _context.Reviews
+                .Where(r => r.SellerId == order.SellerId)
+                .ToListAsync();
+            
+            // Include the new review in calculation
+            allSellerReviews.Add(review);
+            
+            seller.RatingCount = allSellerReviews.Count;
+            seller.RatingAvg = (decimal)allSellerReviews.Average(r => r.Rating);
+            seller.UpdatedAt = DateTime.UtcNow;
+        }
+
         await _context.SaveChangesAsync();
 
         var reviewDto = _mapper.Map<ReviewDto>(review);
@@ -73,6 +90,7 @@ public class ReviewService : IReviewService
     public async Task<List<ReviewDto>> GetReviewsBySellerIdAsync(long sellerId)
     {
         var reviews = await _context.Reviews
+            .Include(r => r.Buyer)
             .Include(r => r.Seller)
             .Where(r => r.SellerId == sellerId)
             .OrderByDescending(r => r.CreatedAt)

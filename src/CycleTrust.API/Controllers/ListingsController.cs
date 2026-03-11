@@ -35,17 +35,56 @@ public class ListingsController : ControllerBase
         }
     }
 
-    [HttpGet("{id}")]
-    public async Task<ActionResult<ApiResponse<ListingDto>>> GetListing(long id)
+    [Authorize(Roles = "ADMIN")]
+    [HttpGet("admin")]
+    public async Task<ActionResult<ApiResponse<List<ListingDto>>>> GetAllListingsForAdmin([FromQuery] string? status)
     {
         try
         {
-            var result = await _listingService.GetListingByIdAsync(id);
-            return Ok(ApiResponse<ListingDto>.SuccessResponse(result));
+            var result = await _listingService.GetAllListingsForAdminAsync(status);
+            return Ok(ApiResponse<List<ListingDto>>.SuccessResponse(result));
         }
         catch (Exception ex)
         {
-            return NotFound(ApiResponse<ListingDto>.ErrorResponse(ex.Message));
+            return BadRequest(ApiResponse<List<ListingDto>>.ErrorResponse(ex.Message));
+        }
+    }
+
+    [Authorize(Roles = "INSPECTOR")]
+    [HttpGet("inspector/my-inspections")]
+    public async Task<ActionResult<ApiResponse<List<ListingDto>>>> GetMyInspections()
+    {
+        try
+        {
+            var userId = GetUserId();
+            var result = await _listingService.GetMyInspectionsAsync(userId);
+            return Ok(ApiResponse<List<ListingDto>>.SuccessResponse(result));
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ApiResponse<List<ListingDto>>.ErrorResponse(ex.Message));
+        }
+    }
+
+    [HttpGet("paged")]
+    public async Task<ActionResult<ApiResponse<PagedResponse<ListingDto>>>> GetListingsPaged(
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 12,
+        [FromQuery] string? status = null,
+        [FromQuery] long? categoryId = null,
+        [FromQuery] long? brandId = null,
+        [FromQuery] decimal? minPrice = null,
+        [FromQuery] decimal? maxPrice = null,
+        [FromQuery] string? search = null)
+    {
+        try
+        {
+            var result = await _listingService.GetListingsPagedAsync(pageNumber, pageSize, status, categoryId, brandId, minPrice, maxPrice, search);
+            return Ok(ApiResponse<PagedResponse<ListingDto>>.SuccessResponse(result));
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ApiResponse<PagedResponse<ListingDto>>.ErrorResponse(ex.Message));
         }
     }
 
@@ -62,6 +101,38 @@ public class ListingsController : ControllerBase
         catch (Exception ex)
         {
             return BadRequest(ApiResponse<List<ListingDto>>.ErrorResponse(ex.Message));
+        }
+    }
+
+    [Authorize(Roles = "SELLER")]
+    [HttpGet("my/paged")]
+    public async Task<ActionResult<ApiResponse<PagedResponse<ListingDto>>>> GetMyListingsPaged(
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 12)
+    {
+        try
+        {
+            var userId = GetUserId();
+            var result = await _listingService.GetMyListingsPagedAsync(userId, pageNumber, pageSize);
+            return Ok(ApiResponse<PagedResponse<ListingDto>>.SuccessResponse(result));
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ApiResponse<PagedResponse<ListingDto>>.ErrorResponse(ex.Message));
+        }
+    }
+
+    [HttpGet("{id}")]
+    public async Task<ActionResult<ApiResponse<ListingDto>>> GetListing(long id)
+    {
+        try
+        {
+            var result = await _listingService.GetListingByIdAsync(id);
+            return Ok(ApiResponse<ListingDto>.SuccessResponse(result));
+        }
+        catch (Exception ex)
+        {
+            return NotFound(ApiResponse<ListingDto>.ErrorResponse(ex.Message));
         }
     }
 
@@ -138,6 +209,23 @@ public class ListingsController : ControllerBase
             var userId = GetUserId();
             var result = await _listingService.CreateInspectionAsync(id, userId, request);
             return Ok(ApiResponse<InspectionDto>.SuccessResponse(result, "Tạo báo cáo kiểm định thành công"));
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ApiResponse<InspectionDto>.ErrorResponse(ex.Message));
+        }
+    }
+
+    [Authorize(Roles = "INSPECTOR,ADMIN")]
+    [HttpPut("{id}/inspection")]
+    public async Task<ActionResult<ApiResponse<InspectionDto>>> UpdateInspection(long id, [FromBody] CreateInspectionRequest request)
+    {
+        try
+        {
+            var userId = GetUserId();
+            var userRole = GetUserRole();
+            var result = await _listingService.UpdateInspectionAsync(id, userId, userRole, request);
+            return Ok(ApiResponse<InspectionDto>.SuccessResponse(result, "Cập nhật báo cáo kiểm định thành công"));
         }
         catch (Exception ex)
         {

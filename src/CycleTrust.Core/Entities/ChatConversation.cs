@@ -11,7 +11,6 @@ public class ChatConversation : BaseEntity
     public int UnreadCountBuyer { get; set; } = 0;
     public int UnreadCountSeller { get; set; } = 0;
     
-    // Navigation
     public Listing? Listing { get; set; }
     public User Buyer { get; set; } = null!;
     public User Seller { get; set; } = null!;

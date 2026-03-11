@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Configuration;
 using CycleTrust.Application.DTOs;
+using CycleTrust.Application.DTOs.Notification;
 using CycleTrust.Core.Entities;
 using CycleTrust.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -22,15 +23,17 @@ public class VNPayService : IVNPayService
 {
     private readonly IConfiguration _configuration;
     private readonly CycleTrustDbContext _context;
+    private readonly INotificationService _notificationService;
     private readonly string _tmnCode;
     private readonly string _hashSecret;
     private readonly string _baseUrl;
     private readonly string _returnUrl;
 
-    public VNPayService(IConfiguration configuration, CycleTrustDbContext context)
+    public VNPayService(IConfiguration configuration, CycleTrustDbContext context, INotificationService notificationService)
     {
         _configuration = configuration;
         _context = context;
+        _notificationService = notificationService;
         _tmnCode = configuration["VNPay:TmnCode"] ?? throw new ArgumentNullException("VNPay TmnCode not configured");
         _hashSecret = configuration["VNPay:HashSecret"] ?? throw new ArgumentNullException("VNPay HashSecret not configured");
         _baseUrl = configuration["VNPay:BaseUrl"] ?? "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html";
@@ -163,13 +166,109 @@ public class VNPayService : IVNPayService
                 payment.PaidAt = responseCode == VNPayResponseCode.SUCCESS ? payDate : null;
 
                 // Update order status
-                var order = await _context.Orders.FindAsync(payment.OrderId);
+                var order = await _context.Orders
+                    .Include(o => o.Listing)
+                    .FirstOrDefaultAsync(o => o.Id == payment.OrderId);
+                    
                 if (order != null && responseCode == VNPayResponseCode.SUCCESS)
                 {
                     if (payment.Type == PaymentType.DEPOSIT)
                     {
                         order.Status = OrderStatus.DEPOSIT_PAID;
                         order.DepositPaidAt = payDate;
+                        
+                        // Notify seller about deposit payment
+                        try
+                        {
+                            await _notificationService.CreateNotificationAsync(new CreateNotificationRequest
+                            {
+                                UserId = order.SellerId,
+                                Type = NotificationType.PAYMENT_SUCCESS,
+                                Title = "Đã nhận tiền cọc",
+                                Message = $"Người mua đã thanh toán tiền cọc {amount:N0} VNĐ cho xe {order.Listing?.Title ?? ""}",
+                                RelatedEntityId = order.Id,
+                                RelatedEntityType = "Order",
+                                ActionUrl = $"/seller/orders/{order.Id}"
+                            });
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"Failed to send PAYMENT_SUCCESS notification: {ex.Message}");
+                        }
+                    }
+                    else if (payment.Type == PaymentType.FULL)
+                    {
+                        Console.WriteLine($"========== VNPAY FULL PAYMENT ==========");
+                        Console.WriteLine($"Order ID: {order.Id}");
+                        Console.WriteLine($"Order Status: {order.Status}");
+                        Console.WriteLine($"Order DeliveredAt: {order.DeliveredAt?.ToString() ?? "NULL"}");
+                        Console.WriteLine($"Has DeliveredAt: {order.DeliveredAt.HasValue}");
+                        
+                        if (order.DeliveredAt.HasValue)
+                        {
+                            Console.WriteLine(">>> SETTING TO COMPLETED");
+                            order.Status = OrderStatus.COMPLETED;
+                            order.CompletedAt = DateTime.UtcNow;
+                            
+                            // Update listing status to SOLD
+                            var listing = await _context.Listings.FindAsync(order.ListingId);
+                            if (listing != null)
+                            {
+                                listing.Status = ListingStatus.SOLD;
+                                listing.UpdatedAt = DateTime.UtcNow;
+                            }
+                            
+                            // Notify seller about order completion
+                            try
+                            {
+                                await _notificationService.CreateNotificationAsync(new CreateNotificationRequest
+                                {
+                                    UserId = order.SellerId,
+                                    Type = NotificationType.ORDER_COMPLETED,
+                                    Title = "Đơn hàng hoàn thành",
+                                    Message = $"Đơn hàng xe {order.Listing?.Title ?? ""} đã hoàn thành",
+                                    RelatedEntityId = order.Id,
+                                    RelatedEntityType = "Order",
+                                    ActionUrl = $"/seller/orders/{order.Id}"
+                                });
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine($"Failed to send ORDER_COMPLETED notification: {ex.Message}");
+                            }
+                        }
+                        else
+                        {
+                            Console.WriteLine(">>> SETTING TO CONFIRMED");
+                            order.Status = OrderStatus.CONFIRMED;
+                            
+                            // Update listing status to SOLD only if not delivered yet
+                            var listing = await _context.Listings.FindAsync(order.ListingId);
+                            if (listing != null)
+                            {
+                                listing.Status = ListingStatus.SOLD;
+                                listing.UpdatedAt = DateTime.UtcNow;
+                            }
+                            
+                            // Notify seller about full payment
+                            try
+                            {
+                                await _notificationService.CreateNotificationAsync(new CreateNotificationRequest
+                                {
+                                    UserId = order.SellerId,
+                                    Type = NotificationType.PAYMENT_SUCCESS,
+                                    Title = "Đã nhận thanh toán",
+                                    Message = $"Người mua đã thanh toán {amount:N0} VNĐ cho xe {order.Listing?.Title ?? ""}. Vui lòng giao hàng!",
+                                    RelatedEntityId = order.Id,
+                                    RelatedEntityType = "Order",
+                                    ActionUrl = $"/seller/orders/{order.Id}"
+                                });
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine($"Failed to send PAYMENT_SUCCESS notification: {ex.Message}");
+                            }
+                        }
                     }
                     order.UpdatedAt = DateTime.UtcNow;
                 }

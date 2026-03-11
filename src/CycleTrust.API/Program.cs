@@ -14,18 +14,15 @@ using CycleTrust.API.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Database
 builder.Services.AddDbContext<CycleTrustDbContext>(options =>
     options.UseMySql(
         builder.Configuration.GetConnectionString("DefaultConnection"),
         ServerVersion.AutoDetect(builder.Configuration.GetConnectionString("DefaultConnection"))
     ));
 
-// Repository & UnitOfWork
 builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
-// Services
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IListingService, ListingService>();
@@ -41,18 +38,14 @@ builder.Services.AddScoped<IVNPayService, VNPayService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IChatService, ChatService>();
 
-// SignalR Broadcasters
 builder.Services.AddScoped<INotificationBroadcaster, SignalRNotificationBroadcaster>();
 builder.Services.AddScoped<IMessageBroadcaster, SignalRMessageBroadcaster>();
 
-// AutoMapper
 builder.Services.AddAutoMapper(typeof(MappingProfile));
 
-// FluentValidation
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddFluentValidationClientsideAdapters();
 
-// JWT Authentication
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -86,13 +79,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
-// SignalR
 builder.Services.AddSignalR();
 
-// Controllers
 builder.Services.AddControllers();
 
-// CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
@@ -104,7 +94,6 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -142,7 +131,18 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// Middleware
+var webRootPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+if (!Directory.Exists(webRootPath))
+    Directory.CreateDirectory(webRootPath);
+
+var uploadsPath = Path.Combine(webRootPath, "uploads");
+if (!Directory.Exists(uploadsPath))
+{
+    Directory.CreateDirectory(uploadsPath);
+    Directory.CreateDirectory(Path.Combine(uploadsPath, "inspections"));
+    Directory.CreateDirectory(Path.Combine(uploadsPath, "listings"));
+}
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -150,6 +150,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("AllowAll");
+
+app.UseStaticFiles();
+
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

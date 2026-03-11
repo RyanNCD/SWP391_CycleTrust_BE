@@ -27,7 +27,6 @@ public class Listing : BaseEntity
     public bool IsDeleted { get; set; } = false;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     
-    // Navigation
     public User Seller { get; set; } = null!;
     public Brand? Brand { get; set; }
     public BikeCategory? Category { get; set; }

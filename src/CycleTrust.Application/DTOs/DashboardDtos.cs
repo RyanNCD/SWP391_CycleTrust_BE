@@ -3,7 +3,6 @@ using System.Collections.Generic;
 
 namespace CycleTrust.Application.DTOs
 {
-    // Dashboard Summary Response
     public class DashboardSummaryDto
     {
         public decimal TotalRevenue { get; set; }
@@ -15,7 +14,6 @@ namespace CycleTrust.Application.DTOs
         public decimal UserGrowth { get; set; }
     }
 
-    // Revenue Data Point
     public class RevenueDataDto
     {
         public string Period { get; set; } = string.Empty; // "Tháng 1", "Tuần 5", etc.
@@ -23,7 +21,6 @@ namespace CycleTrust.Application.DTOs
         public int Orders { get; set; }
     }
 
-    // Order Status Distribution
     public class OrderStatusDto
     {
         public string Name { get; set; } = string.Empty;
@@ -31,7 +28,6 @@ namespace CycleTrust.Application.DTOs
         public string Color { get; set; } = string.Empty;
     }
 
-    // User Growth Data
     public class UserGrowthDto
     {
         public string Period { get; set; } = string.Empty;
@@ -39,7 +35,6 @@ namespace CycleTrust.Application.DTOs
         public int Sellers { get; set; }
     }
 
-    // Top Listing Data
     public class TopListingDto
     {
         public string Name { get; set; } = string.Empty;
@@ -47,7 +42,6 @@ namespace CycleTrust.Application.DTOs
         public decimal Revenue { get; set; }
     }
 
-    // Recent Activity
     public class RecentActivityDto
     {
         public int Id { get; set; }
@@ -56,7 +50,6 @@ namespace CycleTrust.Application.DTOs
         public string Time { get; set; } = string.Empty;
     }
 
-    // Complete Dashboard Response
     public class DashboardDto
     {
         public DashboardSummaryDto Summary { get; set; } = new();

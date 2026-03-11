@@ -2,7 +2,6 @@ using CycleTrust.Core.Enums;
 
 namespace CycleTrust.Application.DTOs;
 
-// Request to create VNPay payment URL
 public class VNPayPaymentRequestDto
 {
     public long OrderId { get; set; }
@@ -12,7 +11,6 @@ public class VNPayPaymentRequestDto
     public PaymentType PaymentType { get; set; }
 }
 
-// Response containing VNPay payment URL
 public class VNPayPaymentResponseDto
 {
     public bool Success { get; set; }
@@ -20,7 +18,6 @@ public class VNPayPaymentResponseDto
     public string? Message { get; set; }
 }
 
-// VNPay callback/return data
 public class VNPayReturnDto
 {
     public bool Success { get; set; }
@@ -36,7 +33,6 @@ public class VNPayReturnDto
     public string? Message { get; set; }
 }
 
-// Response code mapping
 public static class VNPayResponseCode
 {
     public const string SUCCESS = "00";

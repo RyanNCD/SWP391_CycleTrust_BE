@@ -42,6 +42,11 @@ artifacts/
 *.snupkg
 **/packages/*
 
+# User uploaded files
+**/wwwroot/uploads/*
+# Keep the folders but not the files
+!**/wwwroot/uploads/.gitkeep
+
 # Backup & report files
 _UpgradeReport_Files/
 Backup*/

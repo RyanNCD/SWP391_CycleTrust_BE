@@ -31,7 +31,6 @@ public class CycleTrustDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
-        // User
         modelBuilder.Entity<User>(entity =>
         {
             entity.ToTable("users");
@@ -55,7 +54,6 @@ public class CycleTrustDbContext : DbContext
             entity.HasIndex(e => e.Role);
         });
 
-        // Brand
         modelBuilder.Entity<Brand>(entity =>
         {
             entity.ToTable("brands");
@@ -68,7 +66,6 @@ public class CycleTrustDbContext : DbContext
             entity.HasIndex(e => e.Name).IsUnique();
         });
 
-        // BikeCategory
         modelBuilder.Entity<BikeCategory>(entity =>
         {
             entity.ToTable("bike_categories");
@@ -81,7 +78,6 @@ public class CycleTrustDbContext : DbContext
             entity.HasIndex(e => e.Name).IsUnique();
         });
 
-        // SizeOption
         modelBuilder.Entity<SizeOption>(entity =>
         {
             entity.ToTable("size_options");
@@ -94,7 +90,6 @@ public class CycleTrustDbContext : DbContext
             entity.HasIndex(e => e.Label).IsUnique();
         });
 
-        // Listing
         modelBuilder.Entity<Listing>(entity =>
         {
             entity.ToTable("listings");
@@ -132,7 +127,6 @@ public class CycleTrustDbContext : DbContext
             entity.HasIndex(e => e.CategoryId);
         });
 
-        // ListingMedia
         modelBuilder.Entity<ListingMedia>(entity =>
         {
             entity.ToTable("listing_media");
@@ -148,7 +142,6 @@ public class CycleTrustDbContext : DbContext
             entity.HasIndex(e => e.ListingId);
         });
 
-        // Inspection
         modelBuilder.Entity<Inspection>(entity =>
         {
             entity.ToTable("inspections");
@@ -168,7 +161,6 @@ public class CycleTrustDbContext : DbContext
             entity.HasIndex(e => e.InspectorId);
         });
 
-        // Wishlist
         modelBuilder.Entity<Wishlist>(entity =>
         {
             entity.ToTable("wishlists");
@@ -181,7 +173,6 @@ public class CycleTrustDbContext : DbContext
             entity.HasOne(e => e.Listing).WithMany().HasForeignKey(e => e.ListingId).OnDelete(DeleteBehavior.Cascade);
         });
 
-        // DepositPolicy
         modelBuilder.Entity<DepositPolicy>(entity =>
         {
             entity.ToTable("deposit_policies");
@@ -198,7 +189,6 @@ public class CycleTrustDbContext : DbContext
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
         });
 
-        // Order
         modelBuilder.Entity<Order>(entity =>
         {
             entity.ToTable("orders");
@@ -232,7 +222,6 @@ public class CycleTrustDbContext : DbContext
             entity.HasIndex(e => e.ListingId);
         });
 
-        // Payment
         modelBuilder.Entity<Payment>(entity =>
         {
             entity.ToTable("payments");
@@ -253,7 +242,6 @@ public class CycleTrustDbContext : DbContext
             entity.HasIndex(e => e.Status);
         });
 
-        // Review
         modelBuilder.Entity<Review>(entity =>
         {
             entity.ToTable("reviews");
@@ -274,7 +262,6 @@ public class CycleTrustDbContext : DbContext
             entity.HasIndex(e => e.SellerId);
         });
 
-        // ViolationReport
         modelBuilder.Entity<ViolationReport>(entity =>
         {
             entity.ToTable("violation_reports");
@@ -302,7 +289,6 @@ public class CycleTrustDbContext : DbContext
             entity.HasIndex(e => e.ReportedUserId);
         });
 
-        // Dispute
         modelBuilder.Entity<Dispute>(entity =>
         {
             entity.ToTable("disputes");
@@ -328,7 +314,6 @@ public class CycleTrustDbContext : DbContext
             entity.HasIndex(e => e.Status);
         });
 
-        // DisputeEvent
         modelBuilder.Entity<DisputeEvent>(entity =>
         {
             entity.ToTable("dispute_events");
@@ -345,7 +330,6 @@ public class CycleTrustDbContext : DbContext
             entity.HasIndex(e => e.DisputeId);
         });
 
-        // Notification
         modelBuilder.Entity<Notification>(entity =>
         {
             entity.ToTable("notifications");
@@ -368,7 +352,6 @@ public class CycleTrustDbContext : DbContext
             entity.HasIndex(e => e.CreatedAt);
         });
 
-        // ChatConversation
         modelBuilder.Entity<ChatConversation>(entity =>
         {
             entity.ToTable("chat_conversations");
@@ -394,7 +377,6 @@ public class CycleTrustDbContext : DbContext
             entity.HasIndex(e => new { e.BuyerId, e.SellerId, e.ListingId }).IsUnique();
         });
 
-        // ChatMessage
         modelBuilder.Entity<ChatMessage>(entity =>
         {
             entity.ToTable("chat_messages");

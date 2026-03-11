@@ -4,6 +4,8 @@ public class ReviewDto
 {
     public long Id { get; set; }
     public long OrderId { get; set; }
+    public long BuyerId { get; set; }
+    public string BuyerName { get; set; } = string.Empty;
     public long SellerId { get; set; }
     public string SellerName { get; set; } = string.Empty;
     public int Rating { get; set; }
