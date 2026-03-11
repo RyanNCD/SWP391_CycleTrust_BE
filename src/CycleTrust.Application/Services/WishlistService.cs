@@ -28,14 +28,12 @@ public class WishlistService : IWishlistService
 
     public async Task<bool> AddToWishlistAsync(long buyerId, long listingId)
     {
-        // Check if listing exists
         var listing = await _context.Listings
             .FirstOrDefaultAsync(l => l.Id == listingId);
 
         if (listing == null)
             throw new Exception("Listing không tồn tại");
 
-        // Check if already in wishlist
         var existing = await _context.Wishlists
             .AnyAsync(w => w.BuyerId == buyerId && w.ListingId == listingId);
 

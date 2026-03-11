@@ -58,7 +58,6 @@ public class AuthService : IAuthService
         _context.Users.Add(user);
         await _context.SaveChangesAsync();
 
-        // If seller, require admin approval before login
         if (role == UserRole.SELLER)
         {
             throw new Exception("Đăng ký thành công! Tài khoản của bạn đang chờ admin phê duyệt.");
@@ -85,7 +84,6 @@ public class AuthService : IAuthService
         if (!user.IsActive)
             throw new Exception("Tài khoản đã bị khóa");
 
-        // Check seller approval status
         if (user.Role == UserRole.SELLER)
         {
             if (user.ApprovalStatus == ApprovalStatus.PENDING)

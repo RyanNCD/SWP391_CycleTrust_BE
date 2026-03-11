@@ -20,9 +20,6 @@ public class ReviewsController : ControllerBase
 
     private long GetUserId() => long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-    /// <summary>
-    /// Create review (BUYER only, after order COMPLETED)
-    /// </summary>
     [Authorize(Roles = "BUYER")]
     [HttpPost]
     public async Task<ActionResult<ApiResponse<ReviewDto>>> CreateReview([FromBody] CreateReviewRequest request)
@@ -39,9 +36,6 @@ public class ReviewsController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Get all reviews of a seller (Public)
-    /// </summary>
     [HttpGet("seller/{sellerId}")]
     public async Task<ActionResult<ApiResponse<List<ReviewDto>>>> GetSellerReviews(long sellerId)
     {
@@ -56,9 +50,6 @@ public class ReviewsController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Get seller average rating and total reviews (Public)
-    /// </summary>
     [HttpGet("seller/{sellerId}/rating")]
     public async Task<ActionResult<ApiResponse<SellerRatingDto>>> GetSellerRating(long sellerId)
     {

@@ -53,7 +53,6 @@ public class NotificationService : INotificationService
         var notificationDto = _mapper.Map<NotificationDto>(notification);
         Console.WriteLine($"[NotificationService] Created notification ID {notificationDto.Id} for user {request.UserId}");
 
-        // Broadcast notification via SignalR
         try
         {
             Console.WriteLine($"[NotificationService] Broadcasting notification to user {request.UserId}");

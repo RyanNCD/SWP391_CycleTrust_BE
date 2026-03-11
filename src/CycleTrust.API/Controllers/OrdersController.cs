@@ -114,7 +114,6 @@ public class OrdersController : ControllerBase
         {
             var userId = GetUserId();
             
-            // Get order and validate
             var order = await _orderService.GetOrderByIdAsync(id);
             if (order.BuyerId != userId)
                 return Forbid();
@@ -122,14 +121,13 @@ public class OrdersController : ControllerBase
             if (!order.DepositRequired || order.Status != "DEPOSIT_PENDING")
                 return BadRequest(ApiResponse<object>.ErrorResponse("Order không yêu cầu thanh toán cọc hoặc đã thanh toán"));
             
-            // Create VNPay payment
             var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1";
             var vnpayRequest = new VNPayPaymentRequestDto
             {
                 OrderId = id,
                 Amount = order.DepositAmount,
                 OrderInfo = $"Thanh toán cọc đơn hàng #{id}",
-                ReturnUrl = null, // Use default from config
+                ReturnUrl = null,
                 PaymentType = PaymentType.DEPOSIT
             };
             
@@ -154,7 +152,6 @@ public class OrdersController : ControllerBase
         {
             var userId = GetUserId();
             
-            // Get order and validate
             var order = await _orderService.GetOrderByIdAsync(id);
             if (order.BuyerId != userId)
                 return Forbid();
@@ -162,7 +159,6 @@ public class OrdersController : ControllerBase
             long amount = order.PriceAmount;
             string orderInfo = $"Thanh toán toàn bộ đơn hàng #{id}";
             
-            // Check if deposit was already paid
             if (order.DepositRequired && order.DepositPaidAt.HasValue)
             {
                 amount = order.PriceAmount - order.DepositAmount;
@@ -173,14 +169,13 @@ public class OrdersController : ControllerBase
                 return BadRequest(ApiResponse<object>.ErrorResponse("Order không ở trạng thái chờ thanh toán"));
             }
             
-            // Create VNPay payment
             var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1";
             var vnpayRequest = new VNPayPaymentRequestDto
             {
                 OrderId = id,
                 Amount = amount,
                 OrderInfo = orderInfo,
-                ReturnUrl = null, // Use default from config
+                ReturnUrl = null,
                 PaymentType = PaymentType.FULL
             };
             
@@ -205,30 +200,26 @@ public class OrdersController : ControllerBase
         {
             var userId = GetUserId();
             
-            // Get order and validate
             var order = await _orderService.GetOrderByIdAsync(id);
             if (order.BuyerId != userId)
                 return Forbid();
             
-            // Must be delivered before paying remaining
             if (order.Status != "DELIVERED")
                 return BadRequest(ApiResponse<object>.ErrorResponse("Order chưa được giao hàng"));
             
-            // Must have deposit paid
             if (!order.DepositRequired || !order.DepositPaidAt.HasValue)
                 return BadRequest(ApiResponse<object>.ErrorResponse("Order không phải là order đặt cọc"));
             
             var remainingAmount = order.PriceAmount - order.DepositAmount;
             var orderInfo = $"Thanh toán phần còn lại đơn hàng #{id}";
             
-            // Create VNPay payment
             var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1";
             var vnpayRequest = new VNPayPaymentRequestDto
             {
                 OrderId = id,
                 Amount = remainingAmount,
                 OrderInfo = orderInfo,
-                ReturnUrl = null, // Use default from config
+                ReturnUrl = null,
                 PaymentType = PaymentType.FULL
             };
             

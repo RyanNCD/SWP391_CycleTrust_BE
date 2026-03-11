@@ -19,13 +19,6 @@ namespace CycleTrust.API.Controllers
             _analyticsService = analyticsService;
         }
 
-        /// <summary>
-        /// Get dashboard analytics data
-        /// </summary>
-        /// <param name="period">Period type: daily, weekly, or monthly</param>
-        /// <param name="fromDate">Start date (optional)</param>
-        /// <param name="toDate">End date (optional)</param>
-        /// <returns>Complete dashboard data</returns>
         [HttpGet("dashboard")]
         public async Task<ActionResult<DashboardDto>> GetDashboard(
             [FromQuery] string period = "monthly",

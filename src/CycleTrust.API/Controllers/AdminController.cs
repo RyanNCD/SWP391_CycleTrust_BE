@@ -18,9 +18,6 @@ public class AdminController : ControllerBase
         _userManagementService = userManagementService;
     }
 
-    /// <summary>
-    /// Get all users with filters (Admin only)
-    /// </summary>
     [HttpGet("users")]
     public async Task<ActionResult<ApiResponse<UserListResponse>>> GetAllUsers(
         [FromQuery] int page = 1,
@@ -49,9 +46,6 @@ public class AdminController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Get user by ID (Admin only)
-    /// </summary>
     [HttpGet("users/{id}")]
     public async Task<ActionResult<ApiResponse<UserDto>>> GetUserById(long id)
     {
@@ -66,9 +60,6 @@ public class AdminController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Create new user with any role (Admin only)
-    /// </summary>
     [HttpPost("users")]
     public async Task<ActionResult<ApiResponse<UserDto>>> CreateUser([FromBody] CreateUserRequest request)
     {
@@ -83,9 +74,6 @@ public class AdminController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Update user (Admin only)
-    /// </summary>
     [HttpPut("users/{id}")]
     public async Task<ActionResult<ApiResponse<UserDto>>> UpdateUser(long id, [FromBody] UpdateUserRequest request)
     {
@@ -100,9 +88,6 @@ public class AdminController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Delete user (Admin only)
-    /// </summary>
     [HttpDelete("users/{id}")]
     public async Task<ActionResult<ApiResponse<object?>>> DeleteUser(long id)
     {
@@ -117,9 +102,6 @@ public class AdminController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Get pending seller approvals (Admin only)
-    /// </summary>
     [HttpGet("users/pending-sellers")]
     public async Task<ActionResult<ApiResponse<List<UserDto>>>> GetPendingSellers()
     {
@@ -134,9 +116,6 @@ public class AdminController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Approve seller registration (Admin only)
-    /// </summary>
     [HttpPost("users/{id}/approve")]
     public async Task<ActionResult<ApiResponse<UserDto>>> ApproveSeller(long id)
     {
@@ -151,9 +130,6 @@ public class AdminController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Reject seller registration (Admin only)
-    /// </summary>
     [HttpPost("users/{id}/reject")]
     public async Task<ActionResult<ApiResponse<UserDto>>> RejectSeller(long id)
     {
@@ -168,9 +144,6 @@ public class AdminController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Toggle user active status (Admin only)
-    /// </summary>
     [HttpPatch("users/{id}/toggle-active")]
     public async Task<ActionResult<ApiResponse<UserDto>>> ToggleUserActive(long id)
     {

@@ -27,9 +27,6 @@ public class UsersController : ControllerBase
         return long.Parse(userIdClaim!);
     }
 
-    /// <summary>
-    /// Update current user profile
-    /// </summary>
     [HttpPut("profile")]
     public async Task<ActionResult<ApiResponse<UserDto>>> UpdateProfile([FromBody] UpdateProfileRequest request)
     {
@@ -46,9 +43,6 @@ public class UsersController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Change password
-    /// </summary>
     [HttpPost("change-password")]
     public async Task<ActionResult<ApiResponse<object>>> ChangePassword([FromBody] ChangePasswordRequest request)
     {
@@ -65,9 +59,6 @@ public class UsersController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Upload avatar
-    /// </summary>
     [HttpPost("avatar")]
     public async Task<ActionResult<ApiResponse<UserDto>>> UploadAvatar(IFormFile file)
     {
@@ -78,14 +69,12 @@ public class UsersController : ControllerBase
                 return BadRequest(ApiResponse<UserDto>.ErrorResponse("Vui lòng chọn file"));
             }
 
-            // Validate file type
             var allowedTypes = new[] { "image/jpeg", "image/jpg", "image/png", "image/gif" };
             if (!allowedTypes.Contains(file.ContentType.ToLower()))
             {
                 return BadRequest(ApiResponse<UserDto>.ErrorResponse("Chỉ chấp nhận file ảnh (JPG, PNG, GIF)"));
             }
 
-            // Validate file size (5MB max)
             if (file.Length > 5 * 1024 * 1024)
             {
                 return BadRequest(ApiResponse<UserDto>.ErrorResponse("Kích thước file không được vượt quá 5MB"));

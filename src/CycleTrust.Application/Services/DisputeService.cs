@@ -31,7 +31,6 @@ public class DisputeService : IDisputeService
 
     public async Task<DisputeDto> CreateDisputeAsync(long userId, CreateDisputeRequest request)
     {
-        // Validate order exists
         var order = await _context.Orders
             .Include(o => o.Buyer)
             .Include(o => o.Seller)
@@ -40,17 +39,14 @@ public class DisputeService : IDisputeService
         if (order == null)
             throw new Exception("Order không tồn tại");
 
-        // Check if user is involved in the order
         if (order.BuyerId != userId && order.SellerId != userId)
             throw new Exception("Bạn không có quyền tạo dispute cho order này");
 
-        // Check if order can be disputed
         if (order.Status != OrderStatus.CONFIRMED && 
             order.Status != OrderStatus.SHIPPING && 
             order.Status != OrderStatus.DELIVERED)
             throw new Exception("Không thể tạo dispute cho order ở trạng thái này");
 
-        // Check if dispute already exists
         var existingDispute = await _context.Disputes
             .AnyAsync(d => d.OrderId == request.OrderId);
 
@@ -67,12 +63,10 @@ public class DisputeService : IDisputeService
 
         _context.Disputes.Add(dispute);
         
-        // Update order status
         order.Status = OrderStatus.DISPUTED;
         
         await _context.SaveChangesAsync();
 
-        // Add initial event
         var initialEvent = new DisputeEvent
         {
             DisputeId = dispute.Id,
@@ -82,7 +76,6 @@ public class DisputeService : IDisputeService
         _context.DisputeEvents.Add(initialEvent);
         await _context.SaveChangesAsync();
 
-        // Reload with includes
         dispute = await _context.Disputes
             .Include(d => d.OpenedByUser)
             .Include(d => d.Events)
@@ -184,7 +177,6 @@ public class DisputeService : IDisputeService
         dispute.Status = DisputeStatus.ASSIGNED;
         dispute.UpdatedAt = DateTime.UtcNow;
 
-        // Add event
         var assignEvent = new DisputeEvent
         {
             DisputeId = dispute.Id,
@@ -195,7 +187,6 @@ public class DisputeService : IDisputeService
 
         await _context.SaveChangesAsync();
 
-        // Reload
         dispute = await _context.Disputes
             .Include(d => d.OpenedByUser)
             .Include(d => d.AssignedInspector)
@@ -216,7 +207,6 @@ public class DisputeService : IDisputeService
         if (dispute == null)
             throw new Exception("Dispute không tồn tại");
 
-        // Check authorization
         var user = await _context.Users.FindAsync(userId);
         if (user == null || (user.Role != UserRole.ADMIN && user.Role != UserRole.INSPECTOR))
             throw new Exception("Bạn không có quyền resolve dispute");
@@ -229,7 +219,6 @@ public class DisputeService : IDisputeService
         dispute.ResolvedAt = DateTime.UtcNow;
         dispute.UpdatedAt = DateTime.UtcNow;
 
-        // Add resolution event
         var resolveEvent = new DisputeEvent
         {
             DisputeId = dispute.Id,
@@ -238,12 +227,10 @@ public class DisputeService : IDisputeService
         };
         _context.DisputeEvents.Add(resolveEvent);
 
-        // Update order status back to previous state (CONFIRMED)
         dispute.Order.Status = OrderStatus.CONFIRMED;
 
         await _context.SaveChangesAsync();
 
-        // Reload
         dispute = await _context.Disputes
             .Include(d => d.OpenedByUser)
             .Include(d => d.AssignedInspector)
@@ -274,7 +261,6 @@ public class DisputeService : IDisputeService
         dispute.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
 
-        // Reload with actor
         disputeEvent = await _context.DisputeEvents
             .Include(e => e.Actor)
             .FirstAsync(e => e.Id == disputeEvent.Id);

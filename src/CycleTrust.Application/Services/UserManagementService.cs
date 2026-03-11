@@ -32,7 +32,6 @@ public class UserManagementService : IUserManagementService
     {
         var query = _context.Users.AsQueryable();
 
-        // Apply filters
         if (!string.IsNullOrEmpty(filter.Role))
         {
             if (Enum.TryParse<UserRole>(filter.Role, true, out var role))
@@ -112,14 +111,12 @@ public class UserManagementService : IUserManagementService
 
     public async Task<UserDto> CreateUserAsync(CreateUserRequest request)
     {
-        // Validate email uniqueness
         if (!string.IsNullOrEmpty(request.Email))
         {
             if (await _context.Users.AnyAsync(u => u.Email == request.Email))
                 throw new Exception("Email đã tồn tại");
         }
 
-        // Validate phone uniqueness
         if (!string.IsNullOrEmpty(request.Phone))
         {
             if (await _context.Users.AnyAsync(u => u.Phone == request.Phone))
@@ -136,7 +133,7 @@ public class UserManagementService : IUserManagementService
             FullName = request.FullName,
             Role = role,
             IsActive = true,
-            ApprovalStatus = role == UserRole.SELLER ? Core.Enums.ApprovalStatus.APPROVED : null // Admin creates approved sellers
+            ApprovalStatus = role == UserRole.SELLER ? Core.Enums.ApprovalStatus.APPROVED : null
         };
 
         _context.Users.Add(user);
@@ -151,7 +148,6 @@ public class UserManagementService : IUserManagementService
         if (user == null)
             throw new Exception("Không tìm thấy user");
 
-        // Update email if provided and changed
         if (!string.IsNullOrEmpty(request.Email) && request.Email != user.Email)
         {
             if (await _context.Users.AnyAsync(u => u.Email == request.Email && u.Id != id))
@@ -159,7 +155,6 @@ public class UserManagementService : IUserManagementService
             user.Email = request.Email;
         }
 
-        // Update phone if provided and changed
         if (!string.IsNullOrEmpty(request.Phone) && request.Phone != user.Phone)
         {
             if (await _context.Users.AnyAsync(u => u.Phone == request.Phone && u.Id != id))

@@ -60,7 +60,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
         };
         
-        // Allow SignalR to use JWT from query string
         options.Events = new JwtBearerEvents
         {
             OnMessageReceived = context =>

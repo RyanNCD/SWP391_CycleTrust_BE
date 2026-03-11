@@ -21,9 +21,6 @@ public class WishlistController : ControllerBase
 
     private long GetUserId() => long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-    /// <summary>
-    /// Get my wishlist
-    /// </summary>
     [HttpGet]
     public async Task<ActionResult<ApiResponse<List<WishlistItemDto>>>> GetMyWishlist()
     {
@@ -39,9 +36,6 @@ public class WishlistController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Add listing to wishlist
-    /// </summary>
     [HttpPost("{listingId}")]
     public async Task<ActionResult<ApiResponse<bool>>> AddToWishlist(long listingId)
     {
@@ -57,9 +51,6 @@ public class WishlistController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Remove listing from wishlist
-    /// </summary>
     [HttpDelete("{listingId}")]
     public async Task<ActionResult<ApiResponse<bool>>> RemoveFromWishlist(long listingId)
     {
@@ -75,9 +66,6 @@ public class WishlistController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Check if listing is in wishlist
-    /// </summary>
     [HttpGet("check/{listingId}")]
     public async Task<ActionResult<ApiResponse<bool>>> IsInWishlist(long listingId)
     {

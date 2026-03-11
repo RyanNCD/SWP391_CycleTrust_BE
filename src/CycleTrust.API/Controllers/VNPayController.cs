@@ -18,9 +18,6 @@ public class VNPayController : ControllerBase
         _logger = logger;
     }
 
-    /// <summary>
-    /// Create VNPay payment URL for deposit payment
-    /// </summary>
     [HttpPost("create-payment")]
     [Authorize]
     public async Task<ActionResult<VNPayPaymentResponseDto>> CreatePayment([FromBody] VNPayPaymentRequestDto request)
@@ -48,9 +45,6 @@ public class VNPayController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Process VNPay callback/return URL
-    /// </summary>
     [HttpGet("callback")]
     [AllowAnonymous]
     public async Task<ActionResult<VNPayReturnDto>> ProcessCallback()
@@ -78,9 +72,6 @@ public class VNPayController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Process VNPay IPN (Instant Payment Notification)
-    /// </summary>
     [HttpGet("ipn")]
     [AllowAnonymous]
     public async Task<IActionResult> ProcessIPN()
@@ -95,7 +86,6 @@ public class VNPayController : ControllerBase
             _logger.LogInformation("VNPay IPN processed: {TransactionId}, Success: {Success}", 
                 result.TransactionId, result.Success);
 
-            // VNPay expects specific response format
             if (result.Success)
             {
                 return Ok(new { RspCode = "00", Message = "Confirm Success" });

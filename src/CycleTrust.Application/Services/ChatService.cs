@@ -36,7 +36,6 @@ public class ChatService : IChatService
 
     public async Task<ChatConversationDto> GetOrCreateConversationAsync(long userId, long listingId, long sellerId)
     {
-        // Check if listing exists
         var listing = await _context.Listings
             .FirstOrDefaultAsync(l => l.Id == listingId);
 
@@ -45,7 +44,6 @@ public class ChatService : IChatService
 
         var buyerId = userId;
 
-        // Find existing conversation
         var conversation = await _context.ChatConversations
             .Include(c => c.Buyer)
             .Include(c => c.Seller)
@@ -54,7 +52,6 @@ public class ChatService : IChatService
 
         if (conversation == null)
         {
-            // Create new conversation
             conversation = new ChatConversation
             {
                 ListingId = listingId,
@@ -65,7 +62,6 @@ public class ChatService : IChatService
             _context.ChatConversations.Add(conversation);
             await _context.SaveChangesAsync();
 
-            // Reload with navigation properties
             conversation = await _context.ChatConversations
                 .Include(c => c.Buyer)
                 .Include(c => c.Seller)
@@ -91,7 +87,6 @@ public class ChatService : IChatService
 
     public async Task<List<ChatMessageDto>> GetConversationMessagesAsync(long conversationId, long userId, int limit = 50)
     {
-        // Verify user is part of conversation
         var conversation = await _context.ChatConversations
             .FirstOrDefaultAsync(c => c.Id == conversationId && (c.BuyerId == userId || c.SellerId == userId));
 
@@ -105,7 +100,7 @@ public class ChatService : IChatService
             .Take(limit)
             .ToListAsync();
 
-        messages.Reverse(); // Oldest first
+        messages.Reverse();
 
         return messages.Select(m => new ChatMessageDto
         {
@@ -127,7 +122,6 @@ public class ChatService : IChatService
 
         if (request.ConversationId.HasValue)
         {
-            // Use existing conversation
             conversation = await _context.ChatConversations
                 .Include(c => c.Buyer)
                 .Include(c => c.Seller)
@@ -136,13 +130,11 @@ public class ChatService : IChatService
             if (conversation == null)
                 throw new Exception("Conversation không tồn tại");
 
-            // Verify sender is part of conversation
             if (conversation.BuyerId != senderId && conversation.SellerId != senderId)
                 throw new Exception("Bạn không có quyền gửi tin nhắn trong conversation này");
         }
         else if (request.ListingId.HasValue)
         {
-            //Get or create conversation for this listing
             var listing = await _context.Listings
                 .FirstOrDefaultAsync(l => l.Id == request.ListingId.Value);
 
@@ -161,7 +153,6 @@ public class ChatService : IChatService
             throw new Exception("Không thể tạo hoặc tìm thấy conversation");
         }
 
-        // Create message
         var message = new ChatMessage
         {
             ConversationId = conversation.Id,
@@ -172,12 +163,10 @@ public class ChatService : IChatService
 
         _context.ChatMessages.Add(message);
 
-        // Update conversation
         conversation.LastMessage = request.Content.Length > 100 ? request.Content.Substring(0, 100) + "..." : request.Content;
         conversation.LastMessageAt = DateTime.UtcNow;
         conversation.LastMessageSenderId = senderId;
 
-        // Increment unread count for receiver
         if (conversation.BuyerId == senderId)
         {
             conversation.UnreadCountSeller++;
@@ -189,7 +178,6 @@ public class ChatService : IChatService
 
         await _context.SaveChangesAsync();
 
-        // Reload message with sender info
         message = await _context.ChatMessages
             .Include(m => m.Sender)
             .FirstAsync(m => m.Id == message.Id);
@@ -207,10 +195,8 @@ public class ChatService : IChatService
             CreatedAt = message.CreatedAt
         };
 
-        // Determine receiver
         long receiverId = conversation.BuyerId == senderId ? conversation.SellerId : conversation.BuyerId;
 
-        // Create notification for receiver
         try
         {
             Console.WriteLine($"[ChatService] Creating notification for user {receiverId}");
@@ -230,7 +216,6 @@ public class ChatService : IChatService
             Console.WriteLine($"[ChatService] Notification creation failed: {ex.Message}");
         }
 
-        // Broadcast message via SignalR
         try
         {
             Console.WriteLine($"[ChatService] Broadcasting message to conversation {conversation.Id}");
@@ -263,7 +248,6 @@ public class ChatService : IChatService
             message.ReadAt = DateTime.UtcNow;
         }
 
-        // Reset unread count for this user
         if (conversation.BuyerId == userId)
         {
             conversation.UnreadCountBuyer = 0;
@@ -296,7 +280,6 @@ public class ChatService : IChatService
             _context.ChatConversations.Add(conversation);
             await _context.SaveChangesAsync();
 
-            // Reload with navigation properties
             conversation = await _context.ChatConversations
                 .Include(c => c.Buyer)
                 .Include(c => c.Seller)

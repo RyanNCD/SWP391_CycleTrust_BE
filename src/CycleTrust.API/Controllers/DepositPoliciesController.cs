@@ -17,9 +17,6 @@ public class DepositPoliciesController : ControllerBase
         _depositPolicyService = depositPolicyService;
     }
 
-    /// <summary>
-    /// Get active deposit policy (Public)
-    /// </summary>
     [HttpGet("active")]
     public async Task<ActionResult<ApiResponse<DepositPolicyDto?>>> GetActivePolicy()
     {
@@ -34,9 +31,6 @@ public class DepositPoliciesController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Get all deposit policies (ADMIN)
-    /// </summary>
     [Authorize(Roles = "ADMIN")]
     [HttpGet]
     public async Task<ActionResult<ApiResponse<List<DepositPolicyDto>>>> GetAllPolicies()
@@ -52,9 +46,6 @@ public class DepositPoliciesController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Create new deposit policy (ADMIN)
-    /// </summary>
     [Authorize(Roles = "ADMIN")]
     [HttpPost]
     public async Task<ActionResult<ApiResponse<DepositPolicyDto>>> CreatePolicy([FromBody] CreateDepositPolicyRequest request)
@@ -70,9 +61,6 @@ public class DepositPoliciesController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Update deposit policy (ADMIN)
-    /// </summary>
     [Authorize(Roles = "ADMIN")]
     [HttpPut("{id}")]
     public async Task<ActionResult<ApiResponse<DepositPolicyDto>>> UpdatePolicy(long id, [FromBody] UpdateDepositPolicyRequest request)
@@ -88,9 +76,6 @@ public class DepositPoliciesController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Set policy active/inactive (ADMIN)
-    /// </summary>
     [Authorize(Roles = "ADMIN")]
     [HttpPatch("{id}/active")]
     public async Task<ActionResult<ApiResponse<DepositPolicyDto>>> SetActive(long id, [FromQuery] bool isActive)

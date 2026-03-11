@@ -49,18 +49,15 @@ public class DepositPolicyService : IDepositPolicyService
 
     public async Task<DepositPolicyDto> CreatePolicyAsync(CreateDepositPolicyRequest request)
     {
-        // Validate mode
         if (!Enum.TryParse<DepositMode>(request.Mode, true, out var mode))
             throw new Exception("Mode không hợp lệ. Chỉ chấp nhận PERCENT hoặc FIXED");
 
-        // Validate based on mode
         if (mode == DepositMode.PERCENT && (!request.PercentValue.HasValue || request.PercentValue <= 0 || request.PercentValue > 100))
             throw new Exception("PercentValue phải từ 0-100 khi Mode là PERCENT");
 
         if (mode == DepositMode.FIXED && (!request.FixedAmount.HasValue || request.FixedAmount <= 0))
             throw new Exception("FixedAmount phải > 0 khi Mode là FIXED");
 
-        // Create policy (initially active)
         var policy = new DepositPolicy
         {
             IsActive = true,
@@ -73,7 +70,6 @@ public class DepositPolicyService : IDepositPolicyService
             Note = request.Note
         };
 
-        // Deactivate other policies if this is set to active
         var otherPolicies = await _context.DepositPolicies
             .Where(p => p.IsActive)
             .ToListAsync();
@@ -96,11 +92,9 @@ public class DepositPolicyService : IDepositPolicyService
         if (policy == null)
             throw new Exception("Policy không tồn tại");
 
-        // Validate mode
         if (!Enum.TryParse<DepositMode>(request.Mode, true, out var mode))
             throw new Exception("Mode không hợp lệ. Chỉ chấp nhận PERCENT hoặc FIXED");
 
-        // Validate based on mode
         if (mode == DepositMode.PERCENT && (!request.PercentValue.HasValue || request.PercentValue <= 0 || request.PercentValue > 100))
             throw new Exception("PercentValue phải từ 0-100 khi Mode là PERCENT");
 
@@ -129,7 +123,6 @@ public class DepositPolicyService : IDepositPolicyService
 
         if (isActive)
         {
-            // Deactivate all other policies
             var otherPolicies = await _context.DepositPolicies
                 .Where(p => p.IsActive && p.Id != id)
                 .ToListAsync();

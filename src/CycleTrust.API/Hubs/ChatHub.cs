@@ -13,7 +13,6 @@ public class ChatHub : Hub
         
         if (!string.IsNullOrEmpty(userId))
         {
-            // Add user to their personal chat group
             await Groups.AddToGroupAsync(Context.ConnectionId, $"chat_{userId}");
             Console.WriteLine($"[ChatHub] User {userId} added to group chat_{userId}");
         }

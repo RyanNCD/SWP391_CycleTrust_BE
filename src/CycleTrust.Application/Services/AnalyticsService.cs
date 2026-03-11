@@ -26,7 +26,6 @@ namespace CycleTrust.Application.Services
 
         public async Task<DashboardDto> GetDashboardDataAsync(string period = "monthly", DateTime? fromDate = null, DateTime? toDate = null)
         {
-            // Set default date range if not provided
             toDate ??= DateTime.Now;
             fromDate ??= period switch
             {
@@ -50,7 +49,6 @@ namespace CycleTrust.Application.Services
 
         private async Task<DashboardSummaryDto> GetSummaryAsync(DateTime fromDate, DateTime toDate)
         {
-            // Get all completed orders
             var completedOrders = await _context.Orders
                 .Where(o => o.Status == OrderStatus.COMPLETED)
                 .ToListAsync();
@@ -253,7 +251,6 @@ namespace CycleTrust.Application.Services
         {
             var activities = new List<RecentActivityDto>();
 
-            // Recent completed orders
             var recentOrders = await _context.Orders
                 .OrderByDescending(o => o.UpdatedAt)
                 .Take(3)
@@ -267,7 +264,6 @@ namespace CycleTrust.Application.Services
                 .ToListAsync();
             activities.AddRange(recentOrders);
 
-            // Recent users
             var recentUsers = await _context.Users
                 .OrderByDescending(u => u.CreatedAt)
                 .Take(2)

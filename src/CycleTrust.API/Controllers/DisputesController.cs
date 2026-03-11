@@ -22,9 +22,6 @@ public class DisputesController : ControllerBase
     private long GetUserId() => long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
     private string GetUserRole() => User.FindFirstValue(ClaimTypes.Role)!;
 
-    /// <summary>
-    /// Create dispute (BUYER/SELLER)
-    /// </summary>
     [HttpPost]
     public async Task<ActionResult<ApiResponse<DisputeDto>>> CreateDispute([FromBody] CreateDisputeRequest request)
     {
@@ -40,9 +37,6 @@ public class DisputesController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Get my disputes (current user involved)
-    /// </summary>
     [HttpGet("my")]
     public async Task<ActionResult<ApiResponse<List<DisputeDto>>>> GetMyDisputes()
     {
@@ -58,9 +52,6 @@ public class DisputesController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Get all disputes (ADMIN/INSPECTOR)
-    /// </summary>
     [Authorize(Roles = "ADMIN,INSPECTOR")]
     [HttpGet]
     public async Task<ActionResult<ApiResponse<List<DisputeDto>>>> GetAllDisputes([FromQuery] string? status)
@@ -76,9 +67,6 @@ public class DisputesController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Get dispute by ID
-    /// </summary>
     [HttpGet("{id}")]
     public async Task<ActionResult<ApiResponse<DisputeDto>>> GetDispute(long id)
     {
@@ -93,9 +81,6 @@ public class DisputesController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Assign dispute to Inspector/Admin (ADMIN only)
-    /// </summary>
     [Authorize(Roles = "ADMIN")]
     [HttpPost("{id}/assign")]
     public async Task<ActionResult<ApiResponse<DisputeDto>>> AssignDispute(long id, [FromBody] AssignDisputeRequest request)
@@ -112,9 +97,6 @@ public class DisputesController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Resolve dispute (ADMIN/INSPECTOR)
-    /// </summary>
     [Authorize(Roles = "ADMIN,INSPECTOR")]
     [HttpPost("{id}/resolve")]
     public async Task<ActionResult<ApiResponse<DisputeDto>>> ResolveDispute(long id, [FromBody] ResolveDisputeRequest request)
@@ -131,9 +113,6 @@ public class DisputesController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Add comment/event to dispute
-    /// </summary>
     [HttpPost("{id}/events")]
     public async Task<ActionResult<ApiResponse<DisputeEventDto>>> AddEvent(long id, [FromBody] AddDisputeEventRequest request)
     {

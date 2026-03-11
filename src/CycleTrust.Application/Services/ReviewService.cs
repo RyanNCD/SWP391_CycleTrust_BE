@@ -27,7 +27,6 @@ public class ReviewService : IReviewService
 
     public async Task<ReviewDto> CreateReviewAsync(long buyerId, CreateReviewRequest request)
     {
-        // Validate order exists and belongs to buyer
         var order = await _context.Orders
             .Include(o => o.Seller)
             .FirstOrDefaultAsync(o => o.Id == request.OrderId);
@@ -38,18 +37,15 @@ public class ReviewService : IReviewService
         if (order.BuyerId != buyerId)
             throw new Exception("Bạn không có quyền review order này");
 
-        // Check order is completed
         if (order.Status != OrderStatus.COMPLETED)
             throw new Exception("Chỉ có thể review sau khi order hoàn thành");
 
-        // Check if already reviewed
         var existingReview = await _context.Reviews
             .AnyAsync(r => r.OrderId == request.OrderId);
 
         if (existingReview)
             throw new Exception("Order này đã được review");
 
-        // Validate rating
         if (request.Rating < 1 || request.Rating > 5)
             throw new Exception("Rating phải từ 1 đến 5");
 
@@ -64,7 +60,6 @@ public class ReviewService : IReviewService
 
         _context.Reviews.Add(review);
 
-        // Update seller rating
         var seller = await _context.Users.FindAsync(order.SellerId);
         if (seller != null)
         {
@@ -72,7 +67,6 @@ public class ReviewService : IReviewService
                 .Where(r => r.SellerId == order.SellerId)
                 .ToListAsync();
             
-            // Include the new review in calculation
             allSellerReviews.Add(review);
             
             seller.RatingCount = allSellerReviews.Count;

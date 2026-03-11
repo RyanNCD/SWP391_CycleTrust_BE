@@ -44,7 +44,6 @@ public class ListingService : IListingService
         var listing = _mapper.Map<Listing>(request);
         listing.SellerId = sellerId;
         
-        // Set status based on request, default to DRAFT if not specified
         if (!string.IsNullOrEmpty(request.Status) && Enum.TryParse<ListingStatus>(request.Status, true, out var status))
         {
             listing.Status = status;
@@ -87,7 +86,6 @@ public class ListingService : IListingService
             .Include(l => l.Media)
             .Where(l => !l.IsDeleted);
 
-        // Filter out listings with active orders (orders that are not CANCELED or COMPLETED)
         query = query.Where(l => !_context.Orders.Any(o => 
             o.ListingId == l.Id && 
             o.Status != OrderStatus.CANCELED && 
@@ -115,8 +113,6 @@ public class ListingService : IListingService
             .Include(l => l.SizeOption)
             .Include(l => l.Media)
             .Where(l => !l.IsDeleted);
-
-        // Admin sees ALL listings, no filter for active orders
 
         if (!string.IsNullOrEmpty(status))
         {
@@ -163,7 +159,6 @@ public class ListingService : IListingService
             .Include(l => l.Media)
             .Where(l => !l.IsDeleted);
 
-        // Filter out listings with active orders
         query = query.Where(l => !_context.Orders.Any(o => 
             o.ListingId == l.Id && 
             o.Status != OrderStatus.CANCELED && 
@@ -277,18 +272,14 @@ public class ListingService : IListingService
         if (request.ConditionNote != null) listing.ConditionNote = request.ConditionNote;
         if (request.YearModel.HasValue) listing.YearModel = request.YearModel;
         
-        // Handle media update
         if (request.Media != null)
         {
-            // Remove existing media
             var existingMedia = listing.Media.ToList();
             _context.ListingMedia.RemoveRange(existingMedia);
             
-            // Add new media
             listing.Media = _mapper.Map<List<ListingMedia>>(request.Media);
         }
         
-        // Handle status change: DRAFT -> PENDING_APPROVAL
         if (!string.IsNullOrEmpty(request.Status) && Enum.TryParse<ListingStatus>(request.Status, true, out var newStatus))
         {
             if (listing.Status == ListingStatus.DRAFT && newStatus == ListingStatus.PENDING_APPROVAL)
@@ -297,7 +288,6 @@ public class ListingService : IListingService
             }
             else if (listing.Status == ListingStatus.DRAFT && newStatus == ListingStatus.DRAFT)
             {
-                // Keep as draft
                 listing.Status = ListingStatus.DRAFT;
             }
         }
@@ -336,7 +326,6 @@ public class ListingService : IListingService
             listing.ApprovedBy = adminId;
             listing.ApprovedAt = DateTime.UtcNow;
             
-            // Notify seller about approval
             try
             {
                 await _notificationService.CreateNotificationAsync(new CreateNotificationRequest
@@ -360,7 +349,6 @@ public class ListingService : IListingService
             listing.Status = ListingStatus.REJECTED;
             listing.RejectedReason = request.Reason;
             
-            // Notify seller about rejection
             try
             {
                 await _notificationService.CreateNotificationAsync(new CreateNotificationRequest
@@ -415,7 +403,6 @@ public class ListingService : IListingService
 
         await _context.SaveChangesAsync();
 
-        // Notify seller about inspection completion
         try
         {
             await _notificationService.CreateNotificationAsync(new CreateNotificationRequest
@@ -453,11 +440,9 @@ public class ListingService : IListingService
         if (listing.Inspection == null)
             throw new Exception("Listing chưa được kiểm định");
 
-        // Check permissions: only the inspector who created it or admin can edit
         if (userRole != "ADMIN" && listing.Inspection.InspectorId != userId)
             throw new Exception("Bạn không có quyền chỉnh sửa báo cáo kiểm định này");
 
-        // Update inspection
         listing.Inspection.Summary = request.Summary;
         listing.Inspection.ChecklistJson = request.ChecklistJson;
         listing.Inspection.ReportUrl = request.ReportUrl;
@@ -465,7 +450,6 @@ public class ListingService : IListingService
 
         await _context.SaveChangesAsync();
 
-        // Notify seller about inspection update
         try
         {
             await _notificationService.CreateNotificationAsync(new CreateNotificationRequest

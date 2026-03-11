@@ -44,7 +44,6 @@ public class VNPayService : IVNPayService
     {
         try
         {
-            // Validate order exists
             var order = await _context.Orders
                 .Include(o => o.Listing)
                 .FirstOrDefaultAsync(o => o.Id == request.OrderId);
@@ -58,13 +57,12 @@ public class VNPayService : IVNPayService
                 };
             }
 
-            // Create VNPay parameters
             var vnpay = new SortedDictionary<string, string>
             {
                 { "vnp_Version", _configuration["VNPay:Version"] ?? "2.1.0" },
                 { "vnp_Command", _configuration["VNPay:Command"] ?? "pay" },
                 { "vnp_TmnCode", _tmnCode },
-                { "vnp_Amount", (request.Amount * 100).ToString() }, // VNPay uses smallest currency unit
+                { "vnp_Amount", (request.Amount * 100).ToString() },
                 { "vnp_CreateDate", DateTime.Now.ToString("yyyyMMddHHmmss") },
                 { "vnp_CurrCode", _configuration["VNPay:CurrCode"] ?? "VND" },
                 { "vnp_IpAddr", ipAddress },
@@ -72,17 +70,15 @@ public class VNPayService : IVNPayService
                 { "vnp_OrderInfo", request.OrderInfo },
                 { "vnp_OrderType", "billpayment" },
                 { "vnp_ReturnUrl", request.ReturnUrl ?? _returnUrl },
-                { "vnp_TxnRef", $"{DateTime.Now.Ticks}_{order.Id}" } // Unique transaction reference
+                { "vnp_TxnRef", $"{DateTime.Now.Ticks}_{order.Id}" }
             };
 
-            // Build query string and hash
             var queryString = BuildQueryString(vnpay);
             var signData = queryString;
             var vnpSecureHash = HmacSHA512(_hashSecret, signData);
             
             var paymentUrl = $"{_baseUrl}?{queryString}&vnp_SecureHash={vnpSecureHash}";
 
-            // Create payment record
             var payment = new Payment
             {
                 OrderId = order.Id,
@@ -120,12 +116,10 @@ public class VNPayService : IVNPayService
         {
             var secureHash = queryParams.ContainsKey("vnp_SecureHash") ? queryParams["vnp_SecureHash"] : "";
             
-            // Remove hash from params for validation
             var paramsToValidate = new Dictionary<string, string>(queryParams);
             paramsToValidate.Remove("vnp_SecureHash");
             paramsToValidate.Remove("vnp_SecureHashType");
 
-            // Validate signature
             if (!ValidateSignature(paramsToValidate, secureHash))
             {
                 return new VNPayReturnDto
@@ -139,7 +133,7 @@ public class VNPayService : IVNPayService
             var responseCode = queryParams.GetValueOrDefault("vnp_ResponseCode", "");
             var transactionStatus = queryParams.GetValueOrDefault("vnp_TransactionStatus", "");
             var txnRef = queryParams.GetValueOrDefault("vnp_TxnRef", "");
-            var amount = long.Parse(queryParams.GetValueOrDefault("vnp_Amount", "0")) / 100; // Convert back from smallest unit
+            var amount = long.Parse(queryParams.GetValueOrDefault("vnp_Amount", "0")) / 100;
             var bankCode = queryParams.GetValueOrDefault("vnp_BankCode", null);
             var cardType = queryParams.GetValueOrDefault("vnp_CardType", null);
             var payDateStr = queryParams.GetValueOrDefault("vnp_PayDate", "");
@@ -151,10 +145,8 @@ public class VNPayService : IVNPayService
                 DateTime.TryParseExact(payDateStr, "yyyyMMddHHmmss", null, DateTimeStyles.None, out payDate);
             }
 
-            // Extract order ID from TxnRef (format: timestamp_orderId)
             var orderId = ExtractOrderIdFromTxnRef(txnRef);
 
-            // Update payment record
             var payment = await _context.Payments
                 .FirstOrDefaultAsync(p => p.ProviderTxnId == txnRef);
 
@@ -165,7 +157,6 @@ public class VNPayService : IVNPayService
                     : PaymentStatus.FAILED;
                 payment.PaidAt = responseCode == VNPayResponseCode.SUCCESS ? payDate : null;
 
-                // Update order status
                 var order = await _context.Orders
                     .Include(o => o.Listing)
                     .FirstOrDefaultAsync(o => o.Id == payment.OrderId);
@@ -177,7 +168,6 @@ public class VNPayService : IVNPayService
                         order.Status = OrderStatus.DEPOSIT_PAID;
                         order.DepositPaidAt = payDate;
                         
-                        // Notify seller about deposit payment
                         try
                         {
                             await _notificationService.CreateNotificationAsync(new CreateNotificationRequest
@@ -210,7 +200,6 @@ public class VNPayService : IVNPayService
                             order.Status = OrderStatus.COMPLETED;
                             order.CompletedAt = DateTime.UtcNow;
                             
-                            // Update listing status to SOLD
                             var listing = await _context.Listings.FindAsync(order.ListingId);
                             if (listing != null)
                             {
@@ -218,7 +207,6 @@ public class VNPayService : IVNPayService
                                 listing.UpdatedAt = DateTime.UtcNow;
                             }
                             
-                            // Notify seller about order completion
                             try
                             {
                                 await _notificationService.CreateNotificationAsync(new CreateNotificationRequest
@@ -242,7 +230,6 @@ public class VNPayService : IVNPayService
                             Console.WriteLine(">>> SETTING TO CONFIRMED");
                             order.Status = OrderStatus.CONFIRMED;
                             
-                            // Update listing status to SOLD only if not delivered yet
                             var listing = await _context.Listings.FindAsync(order.ListingId);
                             if (listing != null)
                             {
@@ -250,7 +237,6 @@ public class VNPayService : IVNPayService
                                 listing.UpdatedAt = DateTime.UtcNow;
                             }
                             
-                            // Notify seller about full payment
                             try
                             {
                                 await _notificationService.CreateNotificationAsync(new CreateNotificationRequest
@@ -274,12 +260,10 @@ public class VNPayService : IVNPayService
                 }
                 else if (order != null && responseCode != VNPayResponseCode.SUCCESS)
                 {
-                    // Handle failed/cancelled payment
                     if (payment.Type == PaymentType.FULL)
                     {
                         order.Status = OrderStatus.CANCELED;
                     }
-                    // For DEPOSIT type, keep status as DEPOSIT_PENDING to allow retry
                     order.UpdatedAt = DateTime.UtcNow;
                 }
 
@@ -339,7 +323,6 @@ public class VNPayService : IVNPayService
 
     private string ExtractOrderIdFromTxnRef(string txnRef)
     {
-        // Format: timestamp_orderId
         var parts = txnRef.Split('_');
         return parts.Length > 1 ? parts[1] : "0";
     }

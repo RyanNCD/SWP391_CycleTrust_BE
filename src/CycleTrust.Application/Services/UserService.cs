@@ -37,7 +37,6 @@ public class UserService : IUserService
         if (user == null)
             throw new Exception("Không tìm thấy user");
 
-        // Update fields
         if (!string.IsNullOrWhiteSpace(request.FullName))
             user.FullName = request.FullName;
 
@@ -57,11 +56,9 @@ public class UserService : IUserService
         if (user == null)
             throw new Exception("Không tìm thấy user");
 
-        // Verify current password
         if (!BCrypt.Net.BCrypt.Verify(request.CurrentPassword, user.PasswordHash))
             throw new Exception("Mật khẩu hiện tại không đúng");
 
-        // Hash new password
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
         user.UpdatedAt = DateTime.UtcNow;
 
@@ -74,22 +71,18 @@ public class UserService : IUserService
         if (user == null)
             throw new Exception("Không tìm thấy user");
 
-        // Generate unique filename
         var fileName = $"{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
         var uploadPath = Path.Combine("wwwroot", "uploads", "avatars");
         
-        // Create directory if not exists
         Directory.CreateDirectory(uploadPath);
 
         var filePath = Path.Combine(uploadPath, fileName);
 
-        // Save file
         using (var stream = new FileStream(filePath, FileMode.Create))
         {
             await file.CopyToAsync(stream);
         }
 
-        // Delete old avatar if exists
         if (!string.IsNullOrEmpty(user.AvatarUrl))
         {
             try
@@ -106,7 +99,6 @@ public class UserService : IUserService
             }
         }
 
-        // Update user avatar URL
         user.AvatarUrl = $"/uploads/avatars/{fileName}";
         user.UpdatedAt = DateTime.UtcNow;
 

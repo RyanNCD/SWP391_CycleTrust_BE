@@ -104,7 +104,6 @@ public class OrderService : IOrderService
         _context.Orders.Add(order);
         await _context.SaveChangesAsync();
 
-        // Notify seller about new order
         try
         {
             await _notificationService.CreateNotificationAsync(new CreateNotificationRequest
@@ -168,13 +167,11 @@ public class OrderService : IOrderService
             .Include(o => o.Payments)
             .AsQueryable();
 
-        // Filter by status
         if (!string.IsNullOrEmpty(status) && Enum.TryParse<OrderStatus>(status, true, out var orderStatus))
         {
             query = query.Where(o => o.Status == orderStatus);
         }
 
-        // Filter by date range
         if (fromDate.HasValue)
         {
             query = query.Where(o => o.CreatedAt >= fromDate.Value);
@@ -389,7 +386,6 @@ public class OrderService : IOrderService
             order.Status = OrderStatus.SHIPPING;
             order.ShippingNote = request.Note;
             
-            // Notify buyer
             try
             {
                 await _notificationService.CreateNotificationAsync(new CreateNotificationRequest
@@ -413,7 +409,6 @@ public class OrderService : IOrderService
             order.Status = OrderStatus.DELIVERED;
             order.DeliveredAt = DateTime.UtcNow;
             
-            // Notify seller
             try
             {
                 await _notificationService.CreateNotificationAsync(new CreateNotificationRequest
@@ -438,7 +433,6 @@ public class OrderService : IOrderService
             order.CompletedAt = DateTime.UtcNow;
             order.Listing.Status = ListingStatus.SOLD;
             
-            // Notify seller
             try
             {
                 await _notificationService.CreateNotificationAsync(new CreateNotificationRequest
@@ -462,7 +456,6 @@ public class OrderService : IOrderService
             order.Status = OrderStatus.CANCELED;
             order.CanceledReason = request.Note;
             
-            // Notify the other party
             long notifyUserId = order.BuyerId == userId ? order.SellerId : order.BuyerId;
             try
             {
